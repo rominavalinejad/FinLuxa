@@ -8,6 +8,7 @@ logic beyond simple display formatting.
 
 from __future__ import annotations
 
+import base64
 from datetime import date
 
 import streamlit as st
@@ -33,6 +34,42 @@ PAGES = [
     "Reports and analysis",
 ]
 
+ACCOUNT_CSS = """
+<style>
+.finluxa-avatar-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+.finluxa-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ddd;
+}
+.finluxa-avatar-placeholder {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: #e8e8e8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 38px;
+    border: 2px solid #ddd;
+}
+section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"] > div {
+    display: flex;
+    flex-direction: column;
+    min-height: 88vh;
+}
+.finluxa-logout-spacer {
+    flex-grow: 1;
+}
+</style>
+"""
+
 
 # ------------------------------------------------------------------
 # Small read-only helpers needed only by the GUI (not part of Brain)
@@ -43,6 +80,12 @@ class UserDirectory(BaseAnalyzer):
             "SELECT user_id, name FROM users WHERE email = ?", (email,)
         )
         return (rows[0][0], rows[0][1]) if rows else None
+
+    def get_profile_picture(self, user_id: int) -> bytes | None:
+        rows = self._fetch_all(
+            "SELECT profile_picture FROM users WHERE user_id = ?", (user_id,)
+        )
+        return rows[0][0] if rows and rows[0][0] is not None else None
 
 
 class CategoryDirectory(BaseAnalyzer):
@@ -109,21 +152,139 @@ def get_or_create_user(name: str, email: str) -> int:
     return input_service.add_user(name, email)
 
 
-def render_login_sidebar() -> int | None:
-    st.sidebar.subheader("Account")
-    name = st.sidebar.text_input("Name", value=st.session_state.get("name", ""))
-    email = st.sidebar.text_input("Email", value=st.session_state.get("email", ""))
+def _rerun() -> None:
+    """Compatibility wrapper across Streamlit versions."""
+    try:
+        st.rerun()
+    except AttributeError:
+        st.experimental_rerun()
 
+
+def _restore_session_from_url() -> None:
+    """Log the user back in automatically if their email is still in the URL."""
+    if "user_id" in st.session_state:
+        return
+    try:
+        params = dict(st.query_params)
+    except AttributeError:
+        params = st.experimental_get_query_params()
+
+    email = params.get("email")
+    email = email[0] if isinstance(email, list) else email
+    if not email:
+        return
+
+    name = params.get("name")
+    name = name[0] if isinstance(name, list) else name
+
+    try:
+        user_id = get_or_create_user(name or email, email)
+        st.session_state["user_id"] = user_id
+        st.session_state["name"] = name or email
+        st.session_state["email"] = email
+    except FinLuxaError:
+        pass
+
+
+def _remember_in_url(name: str, email: str) -> None:
+    try:
+        st.query_params["email"] = email
+        st.query_params["name"] = name
+    except AttributeError:
+        st.experimental_set_query_params(email=email, name=name)
+
+
+def _forget_url() -> None:
+    try:
+        st.query_params.clear()
+    except AttributeError:
+        st.experimental_set_query_params()
+
+
+def render_account_header() -> int | None:
+    st.markdown(ACCOUNT_CSS, unsafe_allow_html=True)
+    st.sidebar.subheader("Account")
+    _restore_session_from_url()
+
+    if "user_id" in st.session_state:
+        user_id = st.session_state["user_id"]
+        picture = UserDirectory(connection_factory).get_profile_picture(user_id)
+
+        st.sidebar.markdown('<div class="finluxa-avatar-wrap">', unsafe_allow_html=True)
+        if picture:
+            b64_image = base64.b64encode(picture).decode()
+            st.sidebar.markdown(
+                f'<img src="data:image/png;base64,{b64_image}" class="finluxa-avatar">',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.sidebar.markdown(
+                '<div class="finluxa-avatar-placeholder">👤</div>', unsafe_allow_html=True
+            )
+        st.sidebar.markdown("</div>", unsafe_allow_html=True)
+
+        col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+        with col2:
+            if st.button("Edit photo", key="toggle_avatar_editor", use_container_width=True):
+                st.session_state["show_avatar_editor"] = not st.session_state.get(
+                    "show_avatar_editor", False
+                )
+
+        if st.session_state.get("show_avatar_editor"):
+            uploaded = st.sidebar.file_uploader(
+                "New photo", type=["png", "jpg", "jpeg"], key="avatar_upload"
+            )
+            if uploaded is not None:
+                try:
+                    FinLuxaInputService(connection_factory).update_profile_picture(
+                        user_id, uploaded.getvalue()
+                    )
+                    st.session_state["show_avatar_editor"] = False
+                    _rerun()
+                except FinLuxaError as error:
+                    st.sidebar.error(str(error))
+
+            if picture and st.sidebar.button("Remove photo", key="remove_avatar"):
+                try:
+                    FinLuxaInputService(connection_factory).update_profile_picture(user_id, None)
+                    st.session_state["show_avatar_editor"] = False
+                    _rerun()
+                except FinLuxaError as error:
+                    st.sidebar.error(str(error))
+
+        st.sidebar.markdown(
+            f"<p style='text-align:center; margin-bottom:0'><b>{st.session_state.get('name')}</b></p>",
+            unsafe_allow_html=True,
+        )
+        st.sidebar.markdown(
+            f"<p style='text-align:center; color:gray; font-size:0.85em'>User ID: {user_id}</p>",
+            unsafe_allow_html=True,
+        )
+
+        return user_id
+
+    name = st.sidebar.text_input("Name")
+    email = st.sidebar.text_input("Email")
     if st.sidebar.button("Continue"):
         try:
             user_id = get_or_create_user(name, email)
             st.session_state["user_id"] = user_id
             st.session_state["name"] = name
             st.session_state["email"] = email
+            _remember_in_url(name, email)
+            _rerun()
         except FinLuxaError as error:
             st.sidebar.error(str(error))
 
-    return st.session_state.get("user_id")
+    return None
+
+
+def render_logout_button() -> None:
+    st.sidebar.markdown('<div class="finluxa-logout-spacer"></div>', unsafe_allow_html=True)
+    if st.sidebar.button("Log out", use_container_width=True):
+        st.session_state.clear()
+        _forget_url()
+        _rerun()
 
 
 # ------------------------------------------------------------------
@@ -168,23 +329,29 @@ def page_incomes(user_id: int) -> None:
     input_service = FinLuxaInputService(connection_factory)
     categories = CategoryDirectory(connection_factory).list_income_categories(user_id)
 
-    with st.form("add_income_form"):
-        category_names = [name for _, name in categories]
-        category_choice = st.selectbox("Category", category_names + ["+ New category"])
-        new_category_name = ""
-        if category_choice == "+ New category":
-            new_category_name = st.text_input("New category name")
-        amount = st.number_input("Amount", min_value=0.0, step=1000.0)
-        entry_date = st.date_input("Date", value=date.today())
-        submitted = st.form_submit_button("Add income")
+    category_names = [name for _, name in categories]
+    category_choice = st.selectbox(
+        "Category", category_names + ["+ New category"], key="income_category_choice"
+    )
+    new_category_name = ""
+    if category_choice == "+ New category":
+        new_category_name = st.text_input("New category name", key="income_new_category_name")
 
-    if submitted:
+    amount = st.number_input("Amount", min_value=0.0, step=1000.0, key="income_amount")
+
+    no_date = st.checkbox("No specific date", key="income_no_date")
+    entry_date = None
+    if not no_date:
+        entry_date = st.date_input("Date", value=date.today(), key="income_date")
+
+    if st.button("Add income"):
         try:
             if category_choice == "+ New category":
                 category_id = input_service.add_income_category(user_id, new_category_name)
             else:
                 category_id = next(cid for cid, name in categories if name == category_choice)
-            input_service.add_income(user_id, category_id, amount, entry_date.isoformat())
+            date_str = entry_date.isoformat() if entry_date else None
+            input_service.add_income(user_id, category_id, amount, date_str)
             st.success("Income added.")
         except FinLuxaError as error:
             st.error(str(error))
@@ -195,23 +362,29 @@ def page_expenses(user_id: int) -> None:
     input_service = FinLuxaInputService(connection_factory)
     categories = CategoryDirectory(connection_factory).list_expense_categories(user_id)
 
-    with st.form("add_expense_form"):
-        category_names = [name for _, name in categories]
-        category_choice = st.selectbox("Category", category_names + ["+ New category"])
-        new_category_name = ""
-        if category_choice == "+ New category":
-            new_category_name = st.text_input("New category name")
-        amount = st.number_input("Amount", min_value=0.0, step=1000.0)
-        entry_date = st.date_input("Date", value=date.today())
-        submitted = st.form_submit_button("Add expense")
+    category_names = [name for _, name in categories]
+    category_choice = st.selectbox(
+        "Category", category_names + ["+ New category"], key="expense_category_choice"
+    )
+    new_category_name = ""
+    if category_choice == "+ New category":
+        new_category_name = st.text_input("New category name", key="expense_new_category_name")
 
-    if submitted:
+    amount = st.number_input("Amount", min_value=0.0, step=1000.0, key="expense_amount")
+
+    no_date = st.checkbox("No specific date", key="expense_no_date")
+    entry_date = None
+    if not no_date:
+        entry_date = st.date_input("Date", value=date.today(), key="expense_date")
+
+    if st.button("Add expense"):
         try:
             if category_choice == "+ New category":
                 category_id = input_service.add_expense_category(user_id, new_category_name)
             else:
                 category_id = next(cid for cid, name in categories if name == category_choice)
-            input_service.add_expense(user_id, category_id, amount, entry_date.isoformat())
+            date_str = entry_date.isoformat() if entry_date else None
+            input_service.add_expense(user_id, category_id, amount, date_str)
             st.success("Expense added.")
         except FinLuxaError as error:
             st.error(str(error))
@@ -243,7 +416,7 @@ def page_incomes_table(user_id: int) -> None:
         st.caption("No incomes recorded yet.")
         return
     st.dataframe(
-        [{"Date": d, "Category": c, "Amount": a} for d, c, a in rows],
+        [{"Date": d if d else "No date", "Category": c, "Amount": a} for d, c, a in rows],
         use_container_width=True,
     )
 
@@ -255,7 +428,7 @@ def page_expenses_table(user_id: int) -> None:
         st.caption("No expenses recorded yet.")
         return
     st.dataframe(
-        [{"Date": d, "Category": c, "Amount": a} for d, c, a in rows],
+        [{"Date": d if d else "No date", "Category": c, "Amount": a} for d, c, a in rows],
         use_container_width=True,
     )
 
@@ -325,13 +498,16 @@ PAGE_RENDERERS = {
 def main() -> None:
     st.set_page_config(page_title="FinLuxa", layout="wide")
 
-    user_id = render_login_sidebar()
+    user_id = render_account_header()
     if not user_id:
         st.info("Enter your name and email in the sidebar, then click Continue.")
         return
 
     st.sidebar.divider()
     page = st.sidebar.radio("Pages", PAGES)
+
+    render_logout_button()
+
     PAGE_RENDERERS[page](user_id)
 
 

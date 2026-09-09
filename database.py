@@ -76,6 +76,18 @@ class BaseRepository:
                 f"Failed to execute insert. Query: {query!r}. Original error: {exc}"
             ) from exc
 
+    def _execute_update(self, query: str, params: tuple) -> None:
+        """Run an UPDATE statement."""
+        try:
+            with self._connection_factory() as connection:
+                cursor = connection.cursor()
+                cursor.execute(query, params)
+                connection.commit()
+        except pyodbc.Error as exc:
+            raise RecordInsertionError(
+                f"Failed to execute update. Query: {query!r}. Original error: {exc}"
+            ) from exc
+
 
 class BaseAnalyzer:
     """Shared functionality for all FinLuxa read-only analyzers."""

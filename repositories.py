@@ -79,6 +79,11 @@ class UserRepository(BaseRepository):
         )
         return self._execute_insert(query, (name, email))
 
+    def update_profile_picture(self, user_id: int, image_bytes: bytes | None) -> None:
+        """Save, replace, or remove (pass None) a user's profile picture."""
+        query = "UPDATE users SET profile_picture = ? WHERE user_id = ?"
+        self._execute_update(query, (image_bytes, user_id))
+
 
 class _CategoryRepository(BaseRepository):
     """Shared logic for income/expense category repositories."""
@@ -121,10 +126,11 @@ class _TransactionRepository(BaseRepository):
     _id_column: str = ""
 
     def _add_transaction(
-        self, user_id: int, category_id: int, amount: float, date: str
+        self, user_id: int, category_id: int, amount: float, date: str | None
     ) -> int:
         validate_positive_amount(amount)
-        validate_date(date)
+        if date is not None:
+            validate_date(date)
         query = (
             f"INSERT INTO {self._table_name} (user_id, category_id, amount, date) "
             f"OUTPUT INSERTED.{self._id_column} VALUES (?, ?, ?, ?)"
@@ -139,13 +145,13 @@ class IncomeRepository(_TransactionRepository):
     _id_column = "income_id"
 
     def add_income(
-        self, user_id: int, category_id: int, amount: float, date: str
+        self, user_id: int, category_id: int, amount: float, date: str | None = None
     ) -> int:
         """
         Record a new income entry and return its ``income_id``.
 
         Args:
-            date: must be in 'YYYY-MM-DD' format, e.g. '2026-08-30'.
+            date: 'YYYY-MM-DD' format, or None if this income has no specific date.
         """
         return self._add_transaction(user_id, category_id, amount, date)
 
@@ -157,13 +163,13 @@ class ExpenseRepository(_TransactionRepository):
     _id_column = "expense_id"
 
     def add_expense(
-        self, user_id: int, category_id: int, amount: float, date: str
+        self, user_id: int, category_id: int, amount: float, date: str | None = None
     ) -> int:
         """
         Record a new expense entry and return its ``expense_id``.
 
         Args:
-            date: must be in 'YYYY-MM-DD' format, e.g. '2026-08-30'.
+            date: 'YYYY-MM-DD' format, or None if this expense has no specific date.
         """
         return self._add_transaction(user_id, category_id, amount, date)
 
@@ -249,6 +255,9 @@ class FinLuxaInputService:
     def add_user(self, name: str, email: str) -> int:
         return self._users.add_user(name, email)
 
+    def update_profile_picture(self, user_id: int, image_bytes: bytes | None) -> None:
+        self._users.update_profile_picture(user_id, image_bytes)
+
     def add_income_category(self, user_id: int, name: str) -> int:
         return self._income_categories.add_income_category(user_id, name)
 
@@ -256,12 +265,12 @@ class FinLuxaInputService:
         return self._expense_categories.add_expense_category(user_id, name)
 
     def add_income(
-        self, user_id: int, category_id: int, amount: float, date: str
+        self, user_id: int, category_id: int, amount: float, date: str | None = None
     ) -> int:
         return self._incomes.add_income(user_id, category_id, amount, date)
 
     def add_expense(
-        self, user_id: int, category_id: int, amount: float, date: str
+        self, user_id: int, category_id: int, amount: float, date: str | None = None
     ) -> int:
         return self._expenses.add_expense(user_id, category_id, amount, date)
 
