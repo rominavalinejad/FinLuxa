@@ -17,6 +17,7 @@ from brain import (
     BaseAnalyzer,
     BudgetCalculator,
     ExpenseAnalyzer,
+    IncomeAnalyzer,
     ReportGenerator,
     SavingsAdvisor,
 )
@@ -30,6 +31,7 @@ PAGES = [
     "Expenses",
     "Incomes table",
     "Expenses table",
+    "Incomes chart",
     "Expenses chart",
     "Reports and analysis",
 ]
@@ -39,25 +41,33 @@ ACCOUNT_CSS = """
 .finluxa-avatar-wrap {
     display: flex;
     justify-content: center;
+    width: 100%;
     margin-bottom: 4px;
+}
+/* Streamlit wraps our markdown in its own container that doesn't always
+   stretch to full width — force it to, so centering actually works */
+section[data-testid="stSidebar"] div:has(> .finluxa-avatar-wrap) {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 .finluxa-avatar {
     width: 88px;
     height: 88px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #ddd;
+    border: 2px solid #ffffff;
 }
 .finluxa-avatar-placeholder {
     width: 88px;
     height: 88px;
     border-radius: 50%;
-    background: #e8e8e8;
+    background: #6f89b3;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 38px;
-    border: 2px solid #ddd;
+    border: 2px solid #ffffff;
 }
 section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"] > div {
     display: flex;
@@ -66,6 +76,65 @@ section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"]
 }
 .finluxa-logout-spacer {
     flex-grow: 1;
+}
+</style>
+"""
+
+THEME_CSS = """
+<style>
+/* Dashboard (main content) background */
+[data-testid="stAppViewContainer"] {
+    background-color: #001f54;
+}
+[data-testid="stHeader"] {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+/* Sidebar background */
+section[data-testid="stSidebar"] {
+    background-color: #8aa4c8;
+}
+
+/* All text white */
+[data-testid="stAppViewContainer"] * ,
+section[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
+/* Keep input fields readable: dark fields on the dashboard, */
+/* slightly darker-than-sidebar fields inside the sidebar    */
+[data-testid="stAppViewContainer"] input,
+[data-testid="stAppViewContainer"] textarea,
+[data-testid="stAppViewContainer"] [data-baseweb="select"] > div {
+    background-color: #001f54;
+    color: #ffffff !important;
+}
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] textarea,
+section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+    background-color: #6f89b3;
+    color: #ffffff !important;
+}
+
+/* Buttons keep a light background — text must stay dark for contrast */
+[data-testid="stAppViewContainer"] button,
+section[data-testid="stSidebar"] button {
+    color: #001f54 !important;
+}
+[data-testid="stAppViewContainer"] button *,
+section[data-testid="stSidebar"] button * {
+    color: #001f54 !important;
+}
+
+/* Give charts breathing room and soft rounded corners */
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stLineChart"],
+[data-testid="stBarChart"] {
+    padding: 16px;
+    border-radius: 16px;
+    background-color: rgba(255, 255, 255, 0.06);
+    margin-bottom: 8px;
 }
 </style>
 """
@@ -210,18 +279,20 @@ def render_account_header() -> int | None:
         user_id = st.session_state["user_id"]
         picture = UserDirectory(connection_factory).get_profile_picture(user_id)
 
-        st.sidebar.markdown('<div class="finluxa-avatar-wrap">', unsafe_allow_html=True)
         if picture:
             b64_image = base64.b64encode(picture).decode()
-            st.sidebar.markdown(
-                f'<img src="data:image/png;base64,{b64_image}" class="finluxa-avatar">',
-                unsafe_allow_html=True,
+            avatar_html = (
+                '<div class="finluxa-avatar-wrap">'
+                f'<img src="data:image/png;base64,{b64_image}" class="finluxa-avatar">'
+                "</div>"
             )
         else:
-            st.sidebar.markdown(
-                '<div class="finluxa-avatar-placeholder">👤</div>', unsafe_allow_html=True
+            avatar_html = (
+                '<div class="finluxa-avatar-wrap">'
+                '<div class="finluxa-avatar-placeholder">👤</div>'
+                "</div>"
             )
-        st.sidebar.markdown("</div>", unsafe_allow_html=True)
+        st.sidebar.markdown(avatar_html, unsafe_allow_html=True)
 
         col1, col2, col3 = st.sidebar.columns([1, 2, 1])
         with col2:
@@ -433,6 +504,22 @@ def page_expenses_table(user_id: int) -> None:
     )
 
 
+def page_incomes_chart(user_id: int) -> None:
+    st.title("Incomes chart")
+    month = st.date_input("Month", value=date.today(), key="incomes_chart_month").strftime("%Y-%m")
+    analyzer = IncomeAnalyzer(connection_factory)
+    try:
+        chart_data = analyzer.group_by_category(user_id, month)
+    except FinLuxaError as error:
+        st.error(str(error))
+        return
+
+    if not any(chart_data.values()):
+        st.caption("No incomes recorded for this month yet.")
+        return
+    st.bar_chart(chart_data)
+
+
 def page_expenses_chart(user_id: int) -> None:
     st.title("Expenses chart")
     month = st.date_input("Month", value=date.today()).strftime("%Y-%m")
@@ -457,8 +544,39 @@ def page_reports_and_analysis(user_id: int) -> None:
     trend = analyzer.trend_last_months(user_id, 6)
     st.line_chart({month: total for month, total in trend})
 
-    st.subheader("Suggestions")
+    st.subheader("Your saving report")
     advisor = SavingsAdvisor(connection_factory)
+    report = advisor.build_report(user_id)
+
+    st.write(
+        f"Over the last {report.lookback_months} months, you've earned an average of "
+        f"**{report.avg_income:,.0f}** and spent an average of **{report.avg_expense:,.0f}** per month."
+    )
+
+    if report.suggested_target is not None:
+        monthly_needed = report.suggested_target / report.deadline_months_ahead
+        st.write(
+            f"That leaves an average surplus of **{report.avg_balance:,.0f}** per month. "
+            f"Based on this, a realistic saving goal would be **{report.suggested_target:,.0f}** "
+            f"by **{report.suggested_deadline}**."
+        )
+        st.write(
+            f"To reach this goal, you'd need to save about **{monthly_needed:,.0f}** per month — "
+            f"which is comfortably within your current average surplus, leaving some safety margin."
+        )
+    else:
+        st.write(
+            f"On average, you're spending **{report.shortfall_to_break_even:,.0f}** more than "
+            f"you earn each month."
+        )
+        st.write(
+            f"To start saving anything at all, you'd first need to either cut your expenses by "
+            f"about **{report.shortfall_to_break_even:,.0f}** per month, or increase your income "
+            f"by the same amount, just to break even."
+        )
+
+    st.divider()
+    st.subheader("Apply a suggestion")
     categories = CategoryDirectory(connection_factory).list_expense_categories(user_id)
 
     if categories:
@@ -487,6 +605,7 @@ PAGE_RENDERERS = {
     "Expenses": page_expenses,
     "Incomes table": page_incomes_table,
     "Expenses table": page_expenses_table,
+    "Incomes chart": page_incomes_chart,
     "Expenses chart": page_expenses_chart,
     "Reports and analysis": page_reports_and_analysis,
 }
@@ -497,6 +616,7 @@ PAGE_RENDERERS = {
 # ------------------------------------------------------------------
 def main() -> None:
     st.set_page_config(page_title="FinLuxa", layout="wide")
+    st.markdown(THEME_CSS, unsafe_allow_html=True)
 
     user_id = render_account_header()
     if not user_id:

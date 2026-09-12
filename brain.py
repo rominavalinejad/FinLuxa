@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from database import BaseAnalyzer, ConnectionFactory
+from exceptions import ValidationError
 from repositories import (
     BudgetAllocationRepository,
     SavingGoalRepository,
@@ -170,8 +171,45 @@ class ExpenseAnalyzer(BaseAnalyzer):
 
 
 # ------------------------------------------------------------------
+# IncomeAnalyzer
+# ------------------------------------------------------------------
+class IncomeAnalyzer(BaseAnalyzer):
+    """Mirrors ExpenseAnalyzer, but for income categories."""
+
+    def group_by_category(self, user_id: int, month: str) -> dict[str, float]:
+        """Total income per income category for ``user_id`` in the given month."""
+        start, end = _month_date_range(month)
+        query = """
+            SELECT ic.name, COALESCE(SUM(i.amount), 0)
+            FROM income_categories ic
+            LEFT JOIN incomes i
+                ON i.category_id = ic.category_id
+                AND i.user_id = ic.user_id
+                AND i.date >= ? AND i.date < ?
+            WHERE ic.user_id = ?
+            GROUP BY ic.name
+        """
+        rows = self._fetch_all(query, (start, end, user_id))
+        return {name: float(total) for name, total in rows}
+
+
+# ------------------------------------------------------------------
 # SavingsAdvisor
 # ------------------------------------------------------------------
+@dataclass(frozen=True)
+class SavingReport:
+    """A narrative-ready snapshot of the user's saving situation."""
+
+    avg_income: float
+    avg_expense: float
+    avg_balance: float
+    lookback_months: int
+    deadline_months_ahead: int
+    suggested_target: float | None
+    suggested_deadline: str | None
+    shortfall_to_break_even: float | None
+
+
 class SavingsAdvisor:
     """Suggests budget allocations and saving goals based on past behavior."""
 
@@ -200,6 +238,46 @@ class SavingsAdvisor:
             source="auto",
         )
 
+    def build_report(
+        self, user_id: int, lookback_months: int = 3, deadline_months_ahead: int = 6
+    ) -> SavingReport:
+        """
+        Calculate a saving report (averages + suggestion) WITHOUT writing
+        anything to Storage. Used to preview numbers before the user decides
+        to actually save a suggestion.
+        """
+        months = _last_n_months(lookback_months)
+        incomes = [self._calculator.calc_total_income(user_id, month) for month in months]
+        expenses = [self._calculator.calc_total_expense(user_id, month) for month in months]
+        avg_income = sum(incomes) / len(incomes)
+        avg_expense = sum(expenses) / len(expenses)
+        avg_balance = avg_income - avg_expense
+
+        if avg_balance <= 0:
+            return SavingReport(
+                avg_income=avg_income,
+                avg_expense=avg_expense,
+                avg_balance=avg_balance,
+                lookback_months=lookback_months,
+                deadline_months_ahead=deadline_months_ahead,
+                suggested_target=None,
+                suggested_deadline=None,
+                shortfall_to_break_even=abs(avg_balance),
+            )
+
+        target_amount = round(avg_balance * deadline_months_ahead * 0.5, 2)
+        deadline = _months_from_today(deadline_months_ahead)
+        return SavingReport(
+            avg_income=avg_income,
+            avg_expense=avg_expense,
+            avg_balance=avg_balance,
+            lookback_months=lookback_months,
+            deadline_months_ahead=deadline_months_ahead,
+            suggested_target=target_amount,
+            suggested_deadline=deadline,
+            shortfall_to_break_even=None,
+        )
+
     def suggest_saving_goal(
         self, user_id: int, lookback_months: int = 3, deadline_months_ahead: int = 6
     ) -> int:
@@ -207,19 +285,16 @@ class SavingsAdvisor:
         Suggest a saving goal based on recent average monthly balance,
         store it (source='auto'), and return the new ``goal_id``.
         """
-        months = _last_n_months(lookback_months)
-        balances = [self._calculator.calc_balance(user_id, month) for month in months]
-        avg_balance = sum(balances) / len(balances)
-
-        target_amount = round(max(avg_balance, 0) * deadline_months_ahead * 0.5, 2)
-        validate_positive_amount(target_amount, "target_amount")
-
-        deadline = _months_from_today(deadline_months_ahead)
+        report = self.build_report(user_id, lookback_months, deadline_months_ahead)
+        if report.suggested_target is None:
+            raise ValidationError(
+                "Cannot suggest a saving goal while the average balance is not positive."
+            )
 
         return self._goal_repo.add_saving_goal(
             user_id=user_id,
-            target_amount=target_amount,
-            deadline=deadline,
+            target_amount=report.suggested_target,
+            deadline=report.suggested_deadline,
             source="auto",
         )
 
