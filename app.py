@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 from datetime import date
 
+import plotly.graph_objects as go
 import streamlit as st
 
 from brain import (
@@ -90,6 +91,16 @@ THEME_CSS = """
     background-color: rgba(0, 0, 0, 0);
 }
 
+/* Give the main content breathing room instead of hugging the viewport edges */
+[data-testid="stAppViewContainer"] .block-container,
+[data-testid="stMainBlockContainer"] {
+    padding-top: 3rem;
+    padding-left: 4rem;
+    padding-right: 4rem;
+    padding-bottom: 3rem;
+    max-width: 1100px;
+}
+
 /* Sidebar background */
 section[data-testid="stSidebar"] {
     background-color: #8aa4c8;
@@ -127,14 +138,24 @@ section[data-testid="stSidebar"] button * {
 }
 
 /* Give charts breathing room and soft rounded corners */
-[data-testid="stVegaLiteChart"],
-[data-testid="stArrowVegaLiteChart"],
-[data-testid="stLineChart"],
-[data-testid="stBarChart"] {
-    padding: 16px;
-    border-radius: 16px;
+[data-testid="stElementContainer"]:has([data-testid="stVegaLiteChart"]),
+[data-testid="stElementContainer"]:has([data-testid="stArrowVegaLiteChart"]),
+[data-testid="stElementContainer"]:has([data-testid="stLineChart"]),
+[data-testid="stElementContainer"]:has([data-testid="stBarChart"]),
+[data-testid="stElementContainer"]:has([data-testid="stPlotlyChart"]) {
+    padding: 20px;
+    border-radius: 18px;
     background-color: rgba(255, 255, 255, 0.06);
-    margin-bottom: 8px;
+    margin-top: 8px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+[data-testid="stVegaLiteChart"] canvas,
+[data-testid="stVegaLiteChart"] svg,
+[data-testid="stArrowVegaLiteChart"] canvas,
+[data-testid="stArrowVegaLiteChart"] svg {
+    border-radius: 10px;
+    overflow: hidden;
 }
 </style>
 """
@@ -144,11 +165,29 @@ section[data-testid="stSidebar"] button * {
 # Small read-only helpers needed only by the GUI (not part of Brain)
 # ------------------------------------------------------------------
 class UserDirectory(BaseAnalyzer):
-    def find_by_email(self, email: str) -> tuple[int, str] | None:
+    def find_by_email(self, email: str) -> tuple[int, str, str | None] | None:
         rows = self._fetch_all(
-            "SELECT user_id, name FROM users WHERE email = ?", (email,)
+            "SELECT user_id, name, username FROM users WHERE email = ?", (email,)
         )
-        return (rows[0][0], rows[0][1]) if rows else None
+        return (rows[0][0], rows[0][1], rows[0][2]) if rows else None
+
+    def get_username(self, user_id: int) -> str | None:
+        rows = self._fetch_all(
+            "SELECT username FROM users WHERE user_id = ?", (user_id,)
+        )
+        return rows[0][0] if rows else None
+
+    def is_username_taken(self, username: str, exclude_user_id: int | None = None) -> bool:
+        if exclude_user_id is not None:
+            rows = self._fetch_all(
+                "SELECT user_id FROM users WHERE LOWER(username) = LOWER(?) AND user_id <> ?",
+                (username, exclude_user_id),
+            )
+        else:
+            rows = self._fetch_all(
+                "SELECT user_id FROM users WHERE LOWER(username) = LOWER(?)", (username,)
+            )
+        return len(rows) > 0
 
     def get_profile_picture(self, user_id: int) -> bytes | None:
         rows = self._fetch_all(
@@ -212,15 +251,6 @@ def connection_factory():
     return DatabaseConnection(DatabaseConfig())
 
 
-def get_or_create_user(name: str, email: str) -> int:
-    directory = UserDirectory(connection_factory)
-    existing = directory.find_by_email(email)
-    if existing:
-        return existing[0]
-    input_service = FinLuxaInputService(connection_factory)
-    return input_service.add_user(name, email)
-
-
 def _rerun() -> None:
     """Compatibility wrapper across Streamlit versions."""
     try:
@@ -243,16 +273,18 @@ def _restore_session_from_url() -> None:
     if not email:
         return
 
-    name = params.get("name")
-    name = name[0] if isinstance(name, list) else name
-
     try:
-        user_id = get_or_create_user(name or email, email)
-        st.session_state["user_id"] = user_id
-        st.session_state["name"] = name or email
-        st.session_state["email"] = email
+        existing = UserDirectory(connection_factory).find_by_email(email)
     except FinLuxaError:
-        pass
+        return
+    if not existing:
+        return  # unknown email in the URL — fall back to the registration form
+
+    found_id, found_name, found_username = existing
+    st.session_state["user_id"] = found_id
+    st.session_state["name"] = found_name
+    st.session_state["username"] = found_username
+    st.session_state["email"] = email
 
 
 def _remember_in_url(name: str, email: str) -> None:
@@ -277,6 +309,30 @@ def render_account_header() -> int | None:
 
     if "user_id" in st.session_state:
         user_id = st.session_state["user_id"]
+
+        if "username" not in st.session_state:
+            st.session_state["username"] = UserDirectory(connection_factory).get_username(user_id)
+        username = st.session_state.get("username")
+
+        if not username:
+            st.sidebar.info("Choose a username to finish setting up your account.")
+            candidate = st.sidebar.text_input(
+                "Username (4+ chars — letters, numbers, underscore)", key="new_username_choice"
+            )
+            if st.sidebar.button("Save username"):
+                try:
+                    if UserDirectory(connection_factory).is_username_taken(
+                        candidate, exclude_user_id=user_id
+                    ):
+                        st.sidebar.error("That username is already taken.")
+                    else:
+                        FinLuxaInputService(connection_factory).set_username(user_id, candidate)
+                        st.session_state["username"] = candidate
+                        _rerun()
+                except FinLuxaError as error:
+                    st.sidebar.error(str(error))
+            return user_id
+
         picture = UserDirectory(connection_factory).get_profile_picture(user_id)
 
         if picture:
@@ -328,7 +384,7 @@ def render_account_header() -> int | None:
             unsafe_allow_html=True,
         )
         st.sidebar.markdown(
-            f"<p style='text-align:center; color:gray; font-size:0.85em'>User ID: {user_id}</p>",
+            f"<p style='text-align:center; color:gray; font-size:0.85em'>@{username}</p>",
             unsafe_allow_html=True,
         )
 
@@ -336,14 +392,28 @@ def render_account_header() -> int | None:
 
     name = st.sidebar.text_input("Name")
     email = st.sidebar.text_input("Email")
+    username = st.sidebar.text_input("Username (4+ chars — letters, numbers, underscore)")
     if st.sidebar.button("Continue"):
         try:
-            user_id = get_or_create_user(name, email)
-            st.session_state["user_id"] = user_id
-            st.session_state["name"] = name
-            st.session_state["email"] = email
-            _remember_in_url(name, email)
-            _rerun()
+            existing = UserDirectory(connection_factory).find_by_email(email)
+            if existing:
+                found_id, found_name, found_username = existing
+                st.session_state["user_id"] = found_id
+                st.session_state["name"] = found_name
+                st.session_state["username"] = found_username
+                st.session_state["email"] = email
+                _remember_in_url(found_name, email)
+                _rerun()
+            elif UserDirectory(connection_factory).is_username_taken(username):
+                st.sidebar.error("That username is already taken.")
+            else:
+                new_id = FinLuxaInputService(connection_factory).add_user(name, email, username)
+                st.session_state["user_id"] = new_id
+                st.session_state["name"] = name
+                st.session_state["username"] = username
+                st.session_state["email"] = email
+                _remember_in_url(name, email)
+                _rerun()
         except FinLuxaError as error:
             st.sidebar.error(str(error))
 
@@ -361,6 +431,45 @@ def render_logout_button() -> None:
 # ------------------------------------------------------------------
 # Pages
 # ------------------------------------------------------------------
+def _render_donut(percent_used: float, title: str) -> None:
+    """A small donut chart showing percent_used (0-100) with a centered label."""
+    percent_used = max(0.0, min(percent_used, 100.0))
+    remaining = 100.0 - percent_used
+
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                values=[percent_used, remaining],
+                hole=0.65,
+                marker=dict(colors=["#4da3ff", "#22345c"]),
+                textinfo="none",
+                sort=False,
+                direction="clockwise",
+            )
+        ]
+    )
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(l=0, r=0, t=36, b=0),
+        height=220,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#ffffff"),
+        title=dict(text=title, x=0.5, xanchor="center", font=dict(size=14)),
+        annotations=[
+            dict(
+                text=f"{percent_used:.0f}%",
+                x=0.5,
+                y=0.5,
+                font_size=20,
+                showarrow=False,
+                font=dict(color="#ffffff"),
+            )
+        ],
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def page_dashboard(user_id: int) -> None:
     st.title("Dashboard")
     month = st.date_input("Month", value=date.today()).strftime("%Y-%m")
@@ -375,24 +484,25 @@ def page_dashboard(user_id: int) -> None:
     col1, col2, col3 = st.columns(3)
     col1.metric("Income", f"{summary.income:,.0f}")
     col2.metric("Expense", f"{summary.expense:,.0f}")
-    col3.metric("Balance", f"{summary.balance:,.0f}")
-
-    st.subheader("Budget status")
-    if not summary.budget_status:
-        st.caption("No budget set for this month yet.")
-    for status in summary.budget_status:
-        st.write(f"{status.category_name}: {status.spent_amount:,.0f} / {status.limit_amount:,.0f}")
-        st.progress(min(status.percent_used / 100, 1.0))
+    col3.metric("Remaining income", f"{summary.balance:,.0f}")
 
     st.subheader("Saving goal")
     goal = SavingGoalDirectory(connection_factory).get_latest_goal(user_id)
     if goal:
         target, deadline, source = goal
-        progress = max(min(summary.balance / target, 1.0), 0.0) if target else 0.0
+        percent = (summary.balance / target * 100) if target else 0.0
         st.write(f"Target: {target:,.0f} by {deadline} ({source})")
-        st.progress(progress)
+        _render_donut(percent, "Progress")
     else:
         st.caption("No saving goal set yet.")
+
+    st.subheader("Budget status")
+    st.caption("Showing only expense categories that have a budget set for this month.")
+    if not summary.budget_status:
+        st.caption("No budget set for this month yet.")
+    for status in summary.budget_status:
+        st.write(f"{status.category_name}: {status.spent_amount:,.0f} / {status.limit_amount:,.0f}")
+        _render_donut(status.percent_used, status.category_name)
 
 
 def page_incomes(user_id: int) -> None:
@@ -517,7 +627,7 @@ def page_incomes_chart(user_id: int) -> None:
     if not any(chart_data.values()):
         st.caption("No incomes recorded for this month yet.")
         return
-    st.bar_chart(chart_data)
+    st.bar_chart(chart_data, height=320)
 
 
 def page_expenses_chart(user_id: int) -> None:
@@ -533,7 +643,7 @@ def page_expenses_chart(user_id: int) -> None:
     if not any(chart_data.values()):
         st.caption("No expenses recorded for this month yet.")
         return
-    st.bar_chart(chart_data)
+    st.bar_chart(chart_data, height=320)
 
 
 def page_reports_and_analysis(user_id: int) -> None:
@@ -542,7 +652,7 @@ def page_reports_and_analysis(user_id: int) -> None:
     st.subheader("Expense trend (last 6 months)")
     analyzer = ExpenseAnalyzer(connection_factory)
     trend = analyzer.trend_last_months(user_id, 6)
-    st.line_chart({month: total for month, total in trend})
+    st.line_chart({month: total for month, total in trend}, height=320)
 
     st.subheader("Your saving report")
     advisor = SavingsAdvisor(connection_factory)
@@ -620,7 +730,10 @@ def main() -> None:
 
     user_id = render_account_header()
     if not user_id:
-        st.info("Enter your name and email in the sidebar, then click Continue.")
+        st.info("Enter your details in the sidebar, then click Continue.")
+        return
+    if not st.session_state.get("username"):
+        st.info("Please choose a username in the sidebar to continue.")
         return
 
     st.sidebar.divider()

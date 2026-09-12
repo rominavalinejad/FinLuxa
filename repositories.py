@@ -62,22 +62,43 @@ def validate_source(source: str) -> None:
         raise ValidationError(f"source must be 'manual' or 'auto', got {source!r}.")
 
 
+_USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
+
+
+def validate_username(username: str) -> None:
+    """Raise ValidationError unless username is 4+ chars of letters/digits/underscore."""
+    validate_non_empty_text(username, "username")
+    if len(username) < 4:
+        raise ValidationError("username must be at least 4 characters long.")
+    if not _USERNAME_PATTERN.match(username):
+        raise ValidationError(
+            "username can only contain letters, numbers, and underscores."
+        )
+
+
 # ------------------------------------------------------------------
 # Repositories
 # ------------------------------------------------------------------
 class UserRepository(BaseRepository):
     """Handles creation of user records."""
 
-    def add_user(self, name: str, email: str) -> int:
-        """Create a new user and return their generated ``user_id``."""
+    def add_user(self, name: str, email: str, username: str) -> int:
+        """Create a new user (with their chosen username) and return their ``user_id``."""
         validate_non_empty_text(name, "name")
         validate_email(email)
+        validate_username(username)
 
         query = (
-            "INSERT INTO users (name, email) "
-            "OUTPUT INSERTED.user_id VALUES (?, ?)"
+            "INSERT INTO users (name, email, username) "
+            "OUTPUT INSERTED.user_id VALUES (?, ?, ?)"
         )
-        return self._execute_insert(query, (name, email))
+        return self._execute_insert(query, (name, email, username))
+
+    def set_username(self, user_id: int, username: str) -> None:
+        """Set (or change) an existing user's chosen username."""
+        validate_username(username)
+        query = "UPDATE users SET username = ? WHERE user_id = ?"
+        self._execute_update(query, (username, user_id))
 
     def update_profile_picture(self, user_id: int, image_bytes: bytes | None) -> None:
         """Save, replace, or remove (pass None) a user's profile picture."""
@@ -252,8 +273,11 @@ class FinLuxaInputService:
         self._budgets = BudgetAllocationRepository(factory)
         self._saving_goals = SavingGoalRepository(factory)
 
-    def add_user(self, name: str, email: str) -> int:
-        return self._users.add_user(name, email)
+    def add_user(self, name: str, email: str, username: str) -> int:
+        return self._users.add_user(name, email, username)
+
+    def set_username(self, user_id: int, username: str) -> None:
+        self._users.set_username(user_id, username)
 
     def update_profile_picture(self, user_id: int, image_bytes: bytes | None) -> None:
         self._users.update_profile_picture(user_id, image_bytes)

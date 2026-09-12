@@ -33,7 +33,7 @@ class TestUserRepository:
         factory, cursor = make_fake_connection_factory(returned_id=42)
         repo = UserRepository(factory)
 
-        new_id = repo.add_user("Jane Doe", "jane@example.com")
+        new_id = repo.add_user("Jane Doe", "jane@example.com", "jane_doe")
 
         assert new_id == 42
         cursor.execute.assert_called_once()
@@ -43,14 +43,28 @@ class TestUserRepository:
         repo = UserRepository(factory)
 
         with pytest.raises(ValidationError):
-            repo.add_user("", "jane@example.com")
+            repo.add_user("", "jane@example.com", "jane_doe")
 
     def test_add_user_rejects_invalid_email(self):
         factory, _ = make_fake_connection_factory()
         repo = UserRepository(factory)
 
         with pytest.raises(ValidationError):
-            repo.add_user("Jane Doe", "not-an-email")
+            repo.add_user("Jane Doe", "not-an-email", "jane_doe")
+
+    def test_add_user_rejects_short_username(self):
+        factory, _ = make_fake_connection_factory()
+        repo = UserRepository(factory)
+
+        with pytest.raises(ValidationError):
+            repo.add_user("Jane Doe", "jane@example.com", "abc")
+
+    def test_add_user_rejects_username_with_symbols(self):
+        factory, _ = make_fake_connection_factory()
+        repo = UserRepository(factory)
+
+        with pytest.raises(ValidationError):
+            repo.add_user("Jane Doe", "jane@example.com", "jane-doe!")
 
 
 class TestExpenseRepository:
