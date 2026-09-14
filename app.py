@@ -431,6 +431,95 @@ def render_logout_button() -> None:
 # ------------------------------------------------------------------
 # Pages
 # ------------------------------------------------------------------
+def _render_income_expense_donut(income: float, expense: float, remaining: float) -> None:
+    """
+    Shows how income splits into expense vs. remaining — used when the user
+    has not manually set a saving goal, instead of a confusing auto-target
+    comparison.
+    """
+    if income <= 0:
+        st.caption("No income recorded for this month yet.")
+        return
+
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=["Income", "Expense", "Remaining"],
+                values=[income, expense, remaining],
+                hole=0.6,
+                marker=dict(colors=["#2ecc71", "#e74c3c", "#4da3ff"]),
+                textinfo="label+percent",
+                textposition="outside",
+                sort=False,
+            )
+        ]
+    )
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", y=-0.15, font=dict(color="#ffffff")),
+        margin=dict(l=40, r=40, t=20, b=0),
+        height=320,
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#ffffff"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+_INCOME_SHADES = ["#27ae60", "#2ecc71", "#58d68d", "#1abc9c", "#16a085", "#82e0aa"]
+_EXPENSE_SHADES = ["#c0392b", "#e74c3c", "#e67e22", "#cb4335", "#d35400", "#f1948a"]
+_REMAINING_COLOR = "#4da3ff"
+
+
+def _render_category_breakdown_donut(
+    income_by_category: dict[str, float],
+    expense_by_category: dict[str, float],
+    remaining: float,
+) -> None:
+    """
+    A detailed donut: every income category (green shades) and every expense
+    category (red shades), plus the leftover Remaining slice (blue) — so the
+    user can see which specific category dominates their income or spending.
+    """
+    income_items = [(name, amount) for name, amount in income_by_category.items() if amount > 0]
+    expense_items = [(name, amount) for name, amount in expense_by_category.items() if amount > 0]
+    remaining = max(remaining, 0.0)
+
+    if not income_items and not expense_items:
+        st.caption("No incomes or expenses recorded for this month yet.")
+        return
+
+    labels = [name for name, _ in income_items] + ["Remaining"] + [name for name, _ in expense_items]
+    values = [amount for _, amount in income_items] + [remaining] + [amount for _, amount in expense_items]
+    colors = (
+        [_INCOME_SHADES[i % len(_INCOME_SHADES)] for i in range(len(income_items))]
+        + [_REMAINING_COLOR]
+        + [_EXPENSE_SHADES[i % len(_EXPENSE_SHADES)] for i in range(len(expense_items))]
+    )
+
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.6,
+                marker=dict(colors=colors),
+                textinfo="label+percent",
+                textposition="outside",
+                sort=False,
+            )
+        ]
+    )
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", y=-0.15, font=dict(color="#ffffff")),
+        margin=dict(l=40, r=40, t=20, b=0),
+        height=320,
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#ffffff"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def _render_donut(percent_used: float, title: str) -> None:
     """A small donut chart showing percent_used (0-100) with a centered label."""
     percent_used = max(0.0, min(percent_used, 100.0))
@@ -486,23 +575,22 @@ def page_dashboard(user_id: int) -> None:
     col2.metric("Expense", f"{summary.expense:,.0f}")
     col3.metric("Remaining income", f"{summary.balance:,.0f}")
 
-    st.subheader("Saving goal")
     goal = SavingGoalDirectory(connection_factory).get_latest_goal(user_id)
-    if goal:
+    if goal and goal[2] == "manual":
+        st.subheader("Saving goal")
         target, deadline, source = goal
         percent = (summary.balance / target * 100) if target else 0.0
         st.write(f"Target: {target:,.0f} by {deadline} ({source})")
         _render_donut(percent, "Progress")
     else:
-        st.caption("No saving goal set yet.")
+        st.subheader("Remaining")
+        _render_income_expense_donut(summary.income, summary.expense, summary.balance)
 
-    st.subheader("Budget status")
-    st.caption("Showing only expense categories that have a budget set for this month.")
-    if not summary.budget_status:
-        st.caption("No budget set for this month yet.")
-    for status in summary.budget_status:
-        st.write(f"{status.category_name}: {status.spent_amount:,.0f} / {status.limit_amount:,.0f}")
-        _render_donut(status.percent_used, status.category_name)
+    st.subheader("Category breakdown")
+    income_by_category = IncomeAnalyzer(connection_factory).group_by_category(user_id, month)
+    expense_by_category = ExpenseAnalyzer(connection_factory).group_by_category(user_id, month)
+    _render_category_breakdown_donut(income_by_category, expense_by_category, summary.balance)
+
 
 
 def page_incomes(user_id: int) -> None:
