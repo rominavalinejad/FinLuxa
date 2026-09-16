@@ -9,6 +9,7 @@ logic beyond simple display formatting.
 from __future__ import annotations
 
 import base64
+import calendar
 from datetime import date
 
 import plotly.graph_objects as go
@@ -21,6 +22,7 @@ from brain import (
     IncomeAnalyzer,
     ReportGenerator,
     SavingsAdvisor,
+    _last_n_months,
 )
 from database import DatabaseConfig, DatabaseConnection
 from exceptions import FinLuxaError
@@ -229,6 +231,29 @@ class TransactionDirectory(BaseAnalyzer):
             WHERE e.user_id = ? ORDER BY e.date DESC
             """,
             (user_id,),
+        )
+
+    def undated_summary(self, user_id: int) -> tuple[int, float, int, float]:
+        """
+        Return (income_count, income_total, expense_count, expense_total) for
+        entries saved without a specific date. These are intentionally excluded
+        from every month-filtered chart, since they belong to no single month.
+        """
+        income_rows = self._fetch_all(
+            "SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM incomes "
+            "WHERE user_id = ? AND date IS NULL",
+            (user_id,),
+        )
+        expense_rows = self._fetch_all(
+            "SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM expenses "
+            "WHERE user_id = ? AND date IS NULL",
+            (user_id,),
+        )
+        return (
+            int(income_rows[0][0]),
+            float(income_rows[0][1]),
+            int(expense_rows[0][0]),
+            float(expense_rows[0][1]),
         )
 
 
@@ -444,7 +469,7 @@ def _render_income_expense_donut(income: float, expense: float, remaining: float
     fig = go.Figure(
         data=[
             go.Pie(
-                labels=["Income", "Expense", "Remaining"],
+                labels=["Income", "Expense", "Net"],
                 values=[income, expense, remaining],
                 hole=0.6,
                 marker=dict(colors=["#2ecc71", "#e74c3c", "#4da3ff"]),
@@ -465,9 +490,67 @@ def _render_income_expense_donut(income: float, expense: float, remaining: float
     st.plotly_chart(fig, use_container_width=True)
 
 
-_INCOME_SHADES = ["#27ae60", "#2ecc71", "#58d68d", "#1abc9c", "#16a085", "#82e0aa"]
-_EXPENSE_SHADES = ["#c0392b", "#e74c3c", "#e67e22", "#cb4335", "#d35400", "#f1948a"]
+_GREEN_PALETTE = [
+    "#10451d", "#155d27", "#1a7431", "#208b3a",
+    "#25a244", "#2dc653", "#4ad66d",
+]  # darkest -> lightest
+_RED_PALETTE = [
+    "#461220", "#641220", "#85182a", "#a11d33",
+    "#c71f37", "#da1e37", "#ef233c",
+]  # darkest -> lightest
 _REMAINING_COLOR = "#4da3ff"
+
+
+def _blend(from_hex: str, to_hex: str, ratio: float) -> str:
+    """Blend from from_hex (ratio=0) to to_hex (ratio=1)."""
+    ratio = max(0.0, min(ratio, 1.0))
+    fr, fg, fb = int(from_hex[1:3], 16), int(from_hex[3:5], 16), int(from_hex[5:7], 16)
+    tr, tg, tb = int(to_hex[1:3], 16), int(to_hex[3:5], 16), int(to_hex[5:7], 16)
+    r = round(fr + (tr - fr) * ratio)
+    g = round(fg + (tg - fg) * ratio)
+    b = round(fb + (tb - fb) * ratio)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _gradient_colors(palette: list[str], n: int) -> list[str]:
+    """
+    Return n colors, darkest first, following ``palette`` in order.
+    If n exceeds the palette size, smoothly extends the same gradient
+    (interpolating between consecutive palette stops) to produce as
+    many colors as needed, keeping the same dark-to-light logic.
+    """
+    if n <= 0:
+        return []
+    if n <= len(palette):
+        return palette[:n]
+
+    last_index = len(palette) - 1
+    colors = []
+    for i in range(n):
+        position = i * last_index / (n - 1)
+        lo = int(position)
+        hi = min(lo + 1, last_index)
+        fraction = position - lo
+        colors.append(_blend(palette[lo], palette[hi], fraction))
+    return colors
+
+
+def _colors_by_rank(items: list[tuple[str, float]], palette: list[str]) -> list[str]:
+    """
+    Assign colors strictly by impact rank: the largest amount gets the
+    darkest color, the next largest gets the next color in the palette,
+    and so on — regardless of how close or far apart the actual amounts
+    are. Output preserves the original ``items`` order (for slice
+    placement); only the color-to-item mapping follows the ranking.
+    """
+    if not items:
+        return []
+    ranked_colors = _gradient_colors(palette, len(items))
+    order_by_amount_desc = sorted(range(len(items)), key=lambda i: items[i][1], reverse=True)
+    colors: list[str | None] = [None] * len(items)
+    for rank, original_index in enumerate(order_by_amount_desc):
+        colors[original_index] = ranked_colors[rank]
+    return colors  # type: ignore[return-value]
 
 
 def _render_category_breakdown_donut(
@@ -479,6 +562,7 @@ def _render_category_breakdown_donut(
     A detailed donut: every income category (green shades) and every expense
     category (red shades), plus the leftover Remaining slice (blue) — so the
     user can see which specific category dominates their income or spending.
+    Labels live only in the legend (on the right); the ring stays on the left.
     """
     income_items = [(name, amount) for name, amount in income_by_category.items() if amount > 0]
     expense_items = [(name, amount) for name, amount in expense_by_category.items() if amount > 0]
@@ -488,12 +572,12 @@ def _render_category_breakdown_donut(
         st.caption("No incomes or expenses recorded for this month yet.")
         return
 
-    labels = [name for name, _ in income_items] + ["Remaining"] + [name for name, _ in expense_items]
+    labels = [name for name, _ in income_items] + ["Net"] + [name for name, _ in expense_items]
     values = [amount for _, amount in income_items] + [remaining] + [amount for _, amount in expense_items]
     colors = (
-        [_INCOME_SHADES[i % len(_INCOME_SHADES)] for i in range(len(income_items))]
+        _colors_by_rank(income_items, _GREEN_PALETTE)
         + [_REMAINING_COLOR]
-        + [_EXPENSE_SHADES[i % len(_EXPENSE_SHADES)] for i in range(len(expense_items))]
+        + _colors_by_rank(expense_items, _RED_PALETTE)
     )
 
     fig = go.Figure(
@@ -503,16 +587,16 @@ def _render_category_breakdown_donut(
                 values=values,
                 hole=0.6,
                 marker=dict(colors=colors),
-                textinfo="label+percent",
-                textposition="outside",
+                textinfo="none",
                 sort=False,
+                domain=dict(x=[0, 0.55]),
             )
         ]
     )
     fig.update_layout(
         showlegend=True,
-        legend=dict(orientation="h", y=-0.15, font=dict(color="#ffffff")),
-        margin=dict(l=40, r=40, t=20, b=0),
+        legend=dict(font=dict(color="#ffffff"), x=1.0, y=0.5, xanchor="left", yanchor="middle"),
+        margin=dict(l=20, r=180, t=20, b=20),
         height=320,
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#ffffff"),
@@ -559,9 +643,95 @@ def _render_donut(percent_used: float, title: str) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
+_MONTH_LINE_COLORS = ["#1f6feb", "#7cc4fa", "#ef233c"]
+
+
+def _fetch_daily_series(user_id: int, selected_months: list[str]) -> list[tuple[str, list[int], list[float]]]:
+    """Return (month, days, amounts) for each selected month, days padded with zeros."""
+    analyzer = ExpenseAnalyzer(connection_factory)
+    series = []
+    for month in selected_months:
+        totals_by_day = analyzer.daily_totals(user_id, month)
+        year, month_number = (int(part) for part in month.split("-"))
+        days_in_month = calendar.monthrange(year, month_number)[1]
+        days = list(range(1, days_in_month + 1))
+        amounts = [totals_by_day.get(day, 0.0) for day in days]
+        series.append((month, days, amounts))
+    return series
+
+
+def _render_daily_expense_pattern(
+    series: list[tuple[str, list[int], list[float]]]
+) -> None:
+    """
+    Line chart comparing day-by-day expenses across up to three months.
+    Each month is one line; days with no expense count as zero so a sudden
+    spike stands out against otherwise flat stretches. A month's line stops
+    at its real last day rather than being padded out to 31.
+    """
+    fig = go.Figure()
+    has_any_data = False
+
+    for index, (month, days, amounts) in enumerate(series):
+        if any(amounts):
+            has_any_data = True
+
+        fig.add_trace(
+            go.Scatter(
+                x=days,
+                y=amounts,
+                mode="lines",
+                name=month,
+                line=dict(color=_MONTH_LINE_COLORS[index % len(_MONTH_LINE_COLORS)], width=2),
+            )
+        )
+
+    if not has_any_data:
+        st.caption("No expenses recorded for the selected months yet.")
+        return
+
+    y_axis = dict(gridcolor="rgba(255,255,255,0.15)", title="Amount")
+    if st.session_state.get("daily_pattern_manual_range"):
+        y_min = st.session_state.get("daily_pattern_y_min")
+        y_max = st.session_state.get("daily_pattern_y_max")
+        if y_min is None or y_max is None:
+            pass
+        elif y_max <= y_min:
+            st.warning(
+                f"Maximum ({y_max:,.0f}) must be greater than Minimum ({y_min:,.0f}). "
+                "Using the automatic range instead."
+            )
+        else:
+            y_axis["range"] = [y_min, y_max]
+
+    fig.update_layout(
+        xaxis=dict(
+            tickmode="linear",
+            dtick=1,
+            range=[1, 31],
+            gridcolor="rgba(255,255,255,0.08)",
+            title="Day of month",
+        ),
+        yaxis=y_axis,
+        legend=dict(orientation="h", y=-0.25, font=dict(color="#ffffff")),
+        margin=dict(l=20, r=20, t=20, b=20),
+        height=360,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#ffffff"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def page_dashboard(user_id: int) -> None:
     st.title("Dashboard")
-    month = st.date_input("Month", value=date.today()).strftime("%Y-%m")
+    month = st.date_input(
+        "Month",
+        value=date.today(),
+        help="Pick any day in the month you want to view. Only the metrics above "
+        "use this — each chart below has its own month selector.",
+        key="dashboard_top_month",
+    ).strftime("%Y-%m")
 
     reporter = ReportGenerator(connection_factory)
     try:
@@ -575,21 +745,92 @@ def page_dashboard(user_id: int) -> None:
     col2.metric("Expense", f"{summary.expense:,.0f}")
     col3.metric("Remaining income", f"{summary.balance:,.0f}")
 
+    income_count, income_total, expense_count, expense_total = TransactionDirectory(
+        connection_factory
+    ).undated_summary(user_id)
+    if income_count or expense_count:
+        parts = []
+        if income_count:
+            parts.append(f"{income_count} income(s) totalling {income_total:,.0f}")
+        if expense_count:
+            parts.append(f"{expense_count} expense(s) totalling {expense_total:,.0f}")
+        st.info(
+            "Not included in the charts below: "
+            + " and ".join(parts)
+            + " saved without a specific date. Add a date to include them in a month."
+        )
+
+    calculator = BudgetCalculator(connection_factory)
+    month_picker_options = _last_n_months(12)[::-1]
+
     goal = SavingGoalDirectory(connection_factory).get_latest_goal(user_id)
     if goal and goal[2] == "manual":
         st.subheader("Saving goal")
+        net_month = st.selectbox("Month", options=month_picker_options, key="net_month")
+        net_income = calculator.calc_total_income(user_id, net_month)
+        net_expense = calculator.calc_total_expense(user_id, net_month)
+        net_balance = net_income - net_expense
         target, deadline, source = goal
-        percent = (summary.balance / target * 100) if target else 0.0
+        percent = (net_balance / target * 100) if target else 0.0
         st.write(f"Target: {target:,.0f} by {deadline} ({source})")
         _render_donut(percent, "Progress")
     else:
-        st.subheader("Remaining")
-        _render_income_expense_donut(summary.income, summary.expense, summary.balance)
+        st.subheader("Net")
+        net_month = st.selectbox("Month", options=month_picker_options, key="net_month")
+        net_income = calculator.calc_total_income(user_id, net_month)
+        net_expense = calculator.calc_total_expense(user_id, net_month)
+        net_balance = net_income - net_expense
+        _render_income_expense_donut(net_income, net_expense, net_balance)
 
     st.subheader("Category breakdown")
-    income_by_category = IncomeAnalyzer(connection_factory).group_by_category(user_id, month)
-    expense_by_category = ExpenseAnalyzer(connection_factory).group_by_category(user_id, month)
-    _render_category_breakdown_donut(income_by_category, expense_by_category, summary.balance)
+    breakdown_month = st.selectbox(
+        "Month", options=month_picker_options, key="category_breakdown_month"
+    )
+    income_by_category = IncomeAnalyzer(connection_factory).group_by_category(
+        user_id, breakdown_month
+    )
+    expense_by_category = ExpenseAnalyzer(connection_factory).group_by_category(
+        user_id, breakdown_month
+    )
+    breakdown_balance = sum(income_by_category.values()) - sum(expense_by_category.values())
+    _render_category_breakdown_donut(income_by_category, expense_by_category, breakdown_balance)
+
+    st.subheader("Monthly expenses compare")
+    month_options = _last_n_months(12)[::-1]
+    selected_months = st.multiselect(
+        "Compare months (up to 3)",
+        options=month_options,
+        default=month_options[:3],
+        max_selections=3,
+        key="daily_pattern_months",
+    )
+
+    if not selected_months:
+        st.caption("Select at least one month to compare.")
+        return
+
+    try:
+        series = _fetch_daily_series(user_id, sorted(selected_months))
+    except FinLuxaError as error:
+        st.error(str(error))
+        return
+
+    all_amounts = [amount for _, _, amounts in series for amount in amounts]
+    data_max = max(all_amounts) if all_amounts else 1_000_000.0
+    suggested_max = round(data_max * 1.1, 2) if data_max > 0 else 1_000_000.0
+
+    st.checkbox("Set value range manually", key="daily_pattern_manual_range")
+    if st.session_state.get("daily_pattern_manual_range"):
+        range_step = max(round(suggested_max / 20, 2), 1.0)
+        range_col1, range_col2 = st.columns(2)
+        with range_col1:
+            st.number_input("Minimum", value=0.0, step=range_step, key="daily_pattern_y_min")
+        with range_col2:
+            st.number_input(
+                "Maximum", value=suggested_max, step=range_step, key="daily_pattern_y_max"
+            )
+
+    _render_daily_expense_pattern(series)
 
 
 
@@ -607,11 +848,7 @@ def page_incomes(user_id: int) -> None:
         new_category_name = st.text_input("New category name", key="income_new_category_name")
 
     amount = st.number_input("Amount", min_value=0.0, step=1000.0, key="income_amount")
-
-    no_date = st.checkbox("No specific date", key="income_no_date")
-    entry_date = None
-    if not no_date:
-        entry_date = st.date_input("Date", value=date.today(), key="income_date")
+    entry_date = st.date_input("Date", value=date.today(), key="income_date")
 
     if st.button("Add income"):
         try:
@@ -619,8 +856,7 @@ def page_incomes(user_id: int) -> None:
                 category_id = input_service.add_income_category(user_id, new_category_name)
             else:
                 category_id = next(cid for cid, name in categories if name == category_choice)
-            date_str = entry_date.isoformat() if entry_date else None
-            input_service.add_income(user_id, category_id, amount, date_str)
+            input_service.add_income(user_id, category_id, amount, entry_date.isoformat())
             st.success("Income added.")
         except FinLuxaError as error:
             st.error(str(error))
@@ -640,11 +876,7 @@ def page_expenses(user_id: int) -> None:
         new_category_name = st.text_input("New category name", key="expense_new_category_name")
 
     amount = st.number_input("Amount", min_value=0.0, step=1000.0, key="expense_amount")
-
-    no_date = st.checkbox("No specific date", key="expense_no_date")
-    entry_date = None
-    if not no_date:
-        entry_date = st.date_input("Date", value=date.today(), key="expense_date")
+    entry_date = st.date_input("Date", value=date.today(), key="expense_date")
 
     if st.button("Add expense"):
         try:
@@ -652,8 +884,7 @@ def page_expenses(user_id: int) -> None:
                 category_id = input_service.add_expense_category(user_id, new_category_name)
             else:
                 category_id = next(cid for cid, name in categories if name == category_choice)
-            date_str = entry_date.isoformat() if entry_date else None
-            input_service.add_expense(user_id, category_id, amount, date_str)
+            input_service.add_expense(user_id, category_id, amount, entry_date.isoformat())
             st.success("Expense added.")
         except FinLuxaError as error:
             st.error(str(error))

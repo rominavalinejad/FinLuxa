@@ -144,6 +144,18 @@ class ExpenseAnalyzer(BaseAnalyzer):
         rows = self._fetch_all(query, (start, end, user_id))
         return {name: float(total) for name, total in rows}
 
+    def daily_totals(self, user_id: int, month: str) -> dict[int, float]:
+        """Total expenses per day-of-month (1-31) for ``user_id`` in the given month."""
+        start, end = _month_date_range(month)
+        query = """
+            SELECT DAY(date), SUM(amount)
+            FROM expenses
+            WHERE user_id = ? AND date >= ? AND date < ?
+            GROUP BY DAY(date)
+        """
+        rows = self._fetch_all(query, (user_id, start, end))
+        return {int(day): float(total) for day, total in rows}
+
     def trend_last_months(self, user_id: int, n_months: int) -> list[tuple[str, float]]:
         """Total expenses per month for the last ``n_months``, ascending by month."""
         months = _last_n_months(n_months)
