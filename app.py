@@ -723,6 +723,71 @@ def _render_daily_expense_pattern(
     st.plotly_chart(fig, use_container_width=True)
 
 
+_PEAK_EXPENSE_COLOR = "#1f6feb"
+_PEAK_EXPENSE_ALL_OPTION = "ALL (last 12 months)"
+
+
+def _render_peak_expenses_chart(user_id: int) -> None:
+    """
+    Horizontal bar chart ranking the selected months by total expense,
+    largest at the top — helps the user spot their costliest month(s) at
+    a glance. Month labels include the Gregorian year (e.g. '2026-02')
+    since the 12-month window can span two calendar years.
+    """
+    analyzer = ExpenseAnalyzer(connection_factory)
+    try:
+        trend = analyzer.trend_last_months(user_id, 12)
+    except FinLuxaError as error:
+        st.error(str(error))
+        return
+
+    all_months = [month for month, _ in trend]
+    totals_by_month = dict(trend)
+    months_with_data = [month for month in all_months if totals_by_month[month] > 0]
+
+    options = [_PEAK_EXPENSE_ALL_OPTION] + all_months[::-1]
+    default_selection = months_with_data if months_with_data else all_months
+
+    selected = st.multiselect(
+        "Compare months (min 2, or choose ALL)",
+        options=options,
+        default=default_selection,
+        key="peak_expenses_months",
+    )
+
+    chosen_months = all_months if _PEAK_EXPENSE_ALL_OPTION in selected else selected
+
+    if len(chosen_months) < 2:
+        st.caption("Select at least 2 months (or choose ALL) to compare.")
+        return
+
+    ranked = sorted(
+        ((month, totals_by_month.get(month, 0.0)) for month in chosen_months),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+    labels = [month for month, _ in ranked]
+    values = [amount for _, amount in ranked]
+
+    fig = go.Figure(
+        go.Bar(x=values, y=labels, orientation="h", marker=dict(color=_PEAK_EXPENSE_COLOR))
+    )
+    fig.update_layout(
+        yaxis=dict(
+            autorange="reversed",
+            categoryorder="array",
+            categoryarray=labels,
+        ),
+        xaxis=dict(title="Expense amount", gridcolor="rgba(255,255,255,0.1)"),
+        margin=dict(l=20, r=20, t=20, b=20),
+        height=min(max(320, 40 * len(labels)), 520),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#ffffff"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def page_dashboard(user_id: int) -> None:
     st.title("Dashboard")
     month = st.date_input(
@@ -831,6 +896,9 @@ def page_dashboard(user_id: int) -> None:
             )
 
     _render_daily_expense_pattern(series)
+
+    st.subheader("Peak Expenses by Month")
+    _render_peak_expenses_chart(user_id)
 
 
 
