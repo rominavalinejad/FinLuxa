@@ -28,7 +28,7 @@ def _month_date_range(month: str) -> tuple[str, str]:
     return start.isoformat(), end.isoformat()
 
 
-def _last_n_months(n: int, reference: date | None = None) -> list[str]:
+def last_n_months(n: int, reference: date | None = None) -> list[str]:
     """Return the last ``n`` months (including the current one) as 'YYYY-MM' strings, ascending."""
     reference = reference or date.today()
     months = []
@@ -158,7 +158,7 @@ class ExpenseAnalyzer(BaseAnalyzer):
 
     def trend_last_months(self, user_id: int, n_months: int) -> list[tuple[str, float]]:
         """Total expenses per month for the last ``n_months``, ascending by month."""
-        months = _last_n_months(n_months)
+        months = last_n_months(n_months)
         start, _ = _month_date_range(months[0])
         query = """
             SELECT FORMAT(date, 'yyyy-MM'), SUM(amount)
@@ -172,7 +172,7 @@ class ExpenseAnalyzer(BaseAnalyzer):
 
     def avg_expense_by_category(self, user_id: int, category_id: int, n_months: int) -> float:
         """Average monthly spend on one category over the last ``n_months``."""
-        months = _last_n_months(n_months)
+        months = last_n_months(n_months)
         start, _ = _month_date_range(months[0])
         query = """
             SELECT COALESCE(SUM(amount), 0) FROM expenses
@@ -258,7 +258,7 @@ class SavingsAdvisor:
         anything to Storage. Used to preview numbers before the user decides
         to actually save a suggestion.
         """
-        months = _last_n_months(lookback_months)
+        months = last_n_months(lookback_months)
         incomes = [self._calculator.calc_total_income(user_id, month) for month in months]
         expenses = [self._calculator.calc_total_expense(user_id, month) for month in months]
         avg_income = sum(incomes) / len(incomes)

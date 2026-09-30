@@ -761,23 +761,18 @@ def _render_peak_expenses_chart(user_id: int) -> None:
         st.caption("Select at least 2 months (or choose ALL) to compare.")
         return
 
-    ranked = sorted(
+    ranked_ascending = sorted(
         ((month, totals_by_month.get(month, 0.0)) for month in chosen_months),
         key=lambda item: item[1],
-        reverse=True,
     )
-    labels = [month for month, _ in ranked]
-    values = [amount for _, amount in ranked]
+    labels = [month for month, _ in ranked_ascending]
+    values = [amount for _, amount in ranked_ascending]
 
     fig = go.Figure(
         go.Bar(x=values, y=labels, orientation="h", marker=dict(color=_PEAK_EXPENSE_COLOR))
     )
     fig.update_layout(
-        yaxis=dict(
-            autorange="reversed",
-            categoryorder="array",
-            categoryarray=labels,
-        ),
+        yaxis=dict(categoryorder="array", categoryarray=labels),
         xaxis=dict(title="Expense amount", gridcolor="rgba(255,255,255,0.1)"),
         margin=dict(l=20, r=20, t=20, b=20),
         height=min(max(320, 40 * len(labels)), 520),

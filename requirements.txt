@@ -1,0 +1,4 @@
+# FinLuxa backend (Python) dependencies
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pyodbc>=5.0

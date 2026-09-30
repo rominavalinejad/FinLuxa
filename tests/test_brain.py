@@ -12,8 +12,8 @@ from brain import (  # noqa: E402
     IncomeAnalyzer,
     ReportGenerator,
     SavingsAdvisor,
-    _last_n_months,
     _month_date_range,
+    last_n_months,
 )
 
 
@@ -47,13 +47,13 @@ class TestLastNMonths:
     def test_returns_correct_count_and_order(self):
         from datetime import date
 
-        result = _last_n_months(3, reference=date(2026, 3, 15))
+        result = last_n_months(3, reference=date(2026, 3, 15))
         assert result == ["2026-01", "2026-02", "2026-03"]
 
     def test_handles_year_rollover(self):
         from datetime import date
 
-        result = _last_n_months(2, reference=date(2026, 1, 15))
+        result = last_n_months(2, reference=date(2026, 1, 15))
         assert result == ["2025-12", "2026-01"]
 
 
