@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/*
+  Design tokens (colors, fonts, radii, spacing) are intentionally NOT defined yet.
+  They will be extracted from the Figma file (get_design_context) and added in
+  an @theme block here, so every component reads from one source of truth.
+*/
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/*
+  Home grid skeleton. Column ratios come from the Figma card widths
+  (9703 : 6108 : 5763). Row/gap sizes are approximate and will be
+  calibrated against Figma in the styling pass.
+*/
+.home-grid {
+  display: grid;
+  grid-template-columns: 9703fr 6108fr 5763fr;
+  grid-template-areas:
+    "balance  cashflow budget"
+    "spending saving   ai"
+    "monthly  monthly  smallsteps";
+  gap: 1.5rem;
+}
+.home-grid > .area-balance { grid-area: balance; }
+.home-grid > .area-cashflow { grid-area: cashflow; }
+.home-grid > .area-budget { grid-area: budget; }
+.home-grid > .area-spending { grid-area: spending; }
+.home-grid > .area-saving { grid-area: saving; }
+.home-grid > .area-ai { grid-area: ai; }
+.home-grid > .area-monthly { grid-area: monthly; }
+.home-grid > .area-smallsteps { grid-area: smallsteps; }
