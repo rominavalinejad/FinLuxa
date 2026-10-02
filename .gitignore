@@ -234,3 +234,5 @@ yarn-error.log*
 pnpm-debug.log*
 .eslintcache
 *.tsbuildinfo
+
+!frontend/src/lib/
