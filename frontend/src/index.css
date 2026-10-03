@@ -1,10 +1,19 @@
 @import "tailwindcss";
 
 /*
-  Design tokens (colors, fonts, radii, spacing) are intentionally NOT defined yet.
-  They will be extracted from the Figma file (get_design_context) and added in
-  an @theme block here, so every component reads from one source of truth.
+  Design tokens extracted from Figma (Sidebar, Header, Main BG).
+  The Figma "Home Page" frame uses real pixel units, so every size in the components
+  is the Figma value as-is (1 Figma unit = 1 CSS px).
 */
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-page: #f5f7fa;            /* Main BG */
+  --color-sidebar: #0f1e35;         /* Sidebar BG */
+  --color-ink: #0f1e35;             /* Header text */
+  --color-brand: #1bb77b;           /* Active nav item text */
+  --color-nav-active: rgb(27 183 123 / 0.2); /* Active nav item background */
+}
 
 html,
 body,
@@ -12,10 +21,16 @@ body,
   height: 100%;
 }
 
+body {
+  background-color: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
 /*
   Home grid skeleton. Column ratios come from the Figma card widths
   (9703 : 6108 : 5763). Row/gap sizes are approximate and will be
-  calibrated against Figma in the styling pass.
+  calibrated against Figma in the card styling pass.
 */
 .home-grid {
   display: grid;

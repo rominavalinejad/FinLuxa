@@ -9,7 +9,7 @@ interface CardShellProps {
 /** Common card frame. Visual styling (radius, gradient, padding) will come from Figma. */
 export default function CardShell({ title, area, children }: CardShellProps) {
   return (
-    <section className={`area-${area} rounded-xl border border-white/20 p-4`}>
+    <section className={`area-${area} rounded-xl border border-ink/15 p-4`}>
       <h2 className="mb-3 font-semibold">{title}</h2>
       {children}
     </section>
