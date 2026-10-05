@@ -30,6 +30,33 @@ const SVG_ASSETS = [
   { id: "46:49", file: "icons/chevron-down.svg" }, // Header: Date Selector chevron
   { id: "46:27", file: "icons/profile-menu.svg" }, // Header: Profile Menu
   { id: "58:160", file: "icons/notification-button.svg" }, // Header: Notification Button
+
+  // Current Balance card
+  { id: "54:528", file: "cards/current-balance/card.svg" },
+  { id: "69:29", file: "cards/current-balance/wallet.svg" },
+  { id: "69:23", file: "cards/current-balance/starting-balance-bg.svg" },
+  { id: "48:95", file: "cards/current-balance/starting-balance-icon.svg" },
+  { id: "48:75", file: "cards/current-balance/trend-up.svg" },
+  { id: "54:535", file: "cards/current-balance/chevron-right.svg" },
+
+  // Cash Flow card
+  { id: "52:424", file: "cards/cash-flow/card.svg" },
+  { id: "53:495", file: "cards/cash-flow/divider.svg" },
+  { id: "69:42", file: "cards/cash-flow/icon.svg" },
+  { id: "52:437", file: "cards/cash-flow/income-bg.svg" },
+  { id: "69:45", file: "cards/cash-flow/income-icon.svg" },
+  { id: "52:453", file: "cards/cash-flow/expense-bg.svg" },
+  { id: "69:46", file: "cards/cash-flow/expense-icon.svg" },
+  { id: "53:497", file: "cards/cash-flow/net-flow-bg.svg" },
+  { id: "69:47", file: "cards/cash-flow/net-flow-icon.svg" },
+
+  // Budget Overview card
+  { id: "58:3", file: "cards/budget/card.svg" },
+  { id: "70:56", file: "cards/budget/icon.svg" },
+  { id: "70:66", file: "cards/budget/food.svg" },
+  { id: "70:70", file: "cards/budget/housing.svg" },
+  { id: "70:73", file: "cards/budget/transport.svg" },
+  { id: "70:76", file: "cards/budget/entertainment.svg" },
 ];
 
 const token = process.env.FIGMA_TOKEN;

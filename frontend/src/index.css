@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
-  Design tokens extracted from Figma (Sidebar, Header, Main BG).
+  Design tokens extracted from Figma.
   The Figma "Home Page" frame uses real pixel units, so every size in the components
   is the Figma value as-is (1 Figma unit = 1 CSS px).
 */
@@ -10,8 +10,12 @@
 
   --color-page: #f5f7fa;            /* Main BG */
   --color-sidebar: #0f1e35;         /* Sidebar BG */
-  --color-ink: #0f1e35;             /* Header text */
-  --color-brand: #1bb77b;           /* Active nav item text */
+  --color-ink: #0f1e35;             /* Primary text */
+  --color-muted: #939393;           /* Secondary text */
+  --color-brand: #1bb77b;           /* Active nav item, income, positive values */
+  --color-expense: #d22225;         /* Expense amount */
+  --color-netflow: #9672f9;         /* Net Flow amount */
+  --color-link: #2f37cd;            /* "View all" */
   --color-nav-active: rgb(27 183 123 / 0.2); /* Active nav item background */
 }
 
@@ -28,24 +32,14 @@ body {
 }
 
 /*
-  Home grid skeleton. Column ratios come from the Figma card widths
-  (9703 : 6108 : 5763). Row/gap sizes are approximate and will be
-  calibrated against Figma in the card styling pass.
+  Fixed card sizes from the Figma Home frame (width x height).
+  Cards that are not implemented yet are placeholders of the same size.
 */
-.home-grid {
-  display: grid;
-  grid-template-columns: 9703fr 6108fr 5763fr;
-  grid-template-areas:
-    "balance  cashflow budget"
-    "spending saving   ai"
-    "monthly  monthly  smallsteps";
-  gap: 1.5rem;
-}
-.home-grid > .area-balance { grid-area: balance; }
-.home-grid > .area-cashflow { grid-area: cashflow; }
-.home-grid > .area-budget { grid-area: budget; }
-.home-grid > .area-spending { grid-area: spending; }
-.home-grid > .area-saving { grid-area: saving; }
-.home-grid > .area-ai { grid-area: ai; }
-.home-grid > .area-monthly { grid-area: monthly; }
-.home-grid > .area-smallsteps { grid-area: smallsteps; }
+.area-balance { width: 428.18px; height: 277.59px; }
+.area-cashflow { width: 269.54px; height: 229.29px; }
+.area-budget { width: 254.31px; height: 333.37px; }
+.area-spending { width: 425px; height: 202.2px; }
+.area-saving { width: 269.54px; height: 247.69px; }
+.area-ai { width: 254.33px; height: 154.2px; }
+.area-monthly { width: 490.62px; height: 188.52px; }
+.area-smallsteps { width: 490.62px; height: 188.52px; }

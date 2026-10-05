@@ -9,29 +9,29 @@ export default function Sidebar() {
     <aside className="sticky top-0 h-screen w-[303px] shrink-0 bg-sidebar text-white" aria-label="Main navigation">
       {/* Brand block: logo + name + tagline (navigation starts 157px from the top) */}
       <div className="relative h-[157px]">
-        <img src={logo} alt="" className="absolute left-[34px] top-[26.99px] h-[57px] w-[49px]" />
-        <div className="absolute left-[93.9px] top-[27.5px] text-[32.418px] font-semibold leading-normal">FinLuxa</div>
-        <div className="absolute left-[93.9px] top-[66.73px] text-[13.507px] font-light leading-normal">
+        <img src={logo} alt="" className="absolute left-[49px] top-[44px] h-[57px] w-[49px]" />
+        <div className="absolute left-[104.9px] top-[53px] text-[25px] font-semibold leading-normal">FinLuxa</div>
+        <div className="absolute left-[104.9px] top-[89px] text-[10px] font-light leading-normal">
           Smarter Money, Simpler Life
         </div>
       </div>
 
-      <nav className="flex flex-col gap-[14.87px] px-[34px]">
+      <nav className="flex flex-col gap-[15px] px-[34px]">
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             end={item.path === "/"}
             className={({ isActive }) =>
-              `flex h-[39px] w-full items-center rounded-[7.26px] pl-[13.74px] text-[15px] font-semibold leading-normal ${
+              `flex h-[39px] w-full items-center rounded-[7.26px] pl-[27.5px] text-[15px] font-semibold leading-normal ${
                 isActive ? "bg-nav-active text-brand" : "text-white"
               }`
             }
           >
-            <span className="flex w-[20px] justify-center">
+            <span className="flex w-[24px] justify-center">
               <MaskIcon src={item.icon} width={item.iconSize.width} height={item.iconSize.height} />
             </span>
-            <span className="ml-[26.26px]">{item.label}</span>
+            <span className="ml-[19.5px]">{item.label}</span>
           </NavLink>
         ))}
       </nav>
