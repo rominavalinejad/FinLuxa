@@ -1,6 +1,5 @@
 import {
   cashFlowCardBg,
-  cashFlowDivider,
   cashFlowExpenseBg,
   cashFlowExpenseIcon,
   cashFlowIcon,
@@ -67,11 +66,7 @@ export default function CashFlowCard({ data }: { data: CashFlowSummary }) {
       </p>
 
       {/* Divider */}
-      <div className="absolute left-0 top-[171.11px] h-0 w-full">
-        <span className="absolute inset-[-0.78px_0_0_0]">
-          <img src={cashFlowDivider} alt="" className="block size-full max-w-none" />
-        </span>
-      </div>
+      <div aria-hidden="true" className="absolute left-0 top-[171.11px] h-[0.78px] w-full bg-[#d9d9d9]" />
 
       {/* Net Flow */}
       <img src={cashFlowNetBg} alt="" className="absolute left-[21.11px] top-[183.54px] size-[27.587px]" />

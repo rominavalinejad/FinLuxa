@@ -12,6 +12,7 @@ export default function App() {
         {NAV_ITEMS.filter((item) => item.path !== "/").map((item) => (
           <Route key={item.path} path={item.path} element={<ComingSoon title={item.label} />} />
         ))}
+        <Route path="/budget" element={<ComingSoon title="Budget" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { budgetCardBg, budgetOverviewIcon } from "../../../assets";
 import { formatAmount } from "../../../lib/format";
 import type { BudgetItem } from "../../../types/home";
@@ -31,13 +32,12 @@ export default function BudgetOverviewCard({ data }: { data: BudgetItem[] }) {
       <h2 className="absolute left-[55.85px] top-[21px] whitespace-nowrap text-[15px] font-semibold leading-normal">
         Budget Overview
       </h2>
-      {/* PENDING: destination of "View all" */}
-      <button
-        type="button"
+      <Link
+        to="/budget"
         className="absolute left-[205.36px] top-[24px] whitespace-nowrap text-[10px] font-normal leading-normal text-link"
       >
         View all
-      </button>
+      </Link>
 
       {/* Budget list */}
       {data.slice(0, MAX_ROWS).map((item, index) => {
@@ -49,11 +49,13 @@ export default function BudgetOverviewCard({ data }: { data: BudgetItem[] }) {
             className="absolute inset-x-0 h-[47.688px]"
             style={{ top: FIRST_ROW_TOP + index * ROW_PITCH }}
           >
-            {style.icon ? (
-              <img src={style.icon} alt="" className="absolute left-[16.54px] top-0 size-[47.688px]" />
-            ) : (
-              <span className="absolute left-[16.54px] top-0 block size-[47.688px] rounded-full bg-muted/20" />
-            )}
+            {/* Round tinted background (category colour at 20%) + the glyph at its own size */}
+            <span
+              className="absolute left-[16.54px] top-0 flex size-[47.688px] items-center justify-center rounded-full"
+              style={{ backgroundColor: `${style.color}33` }}
+            >
+              {style.icon && <img src={style.icon} alt="" className="max-h-[70%] max-w-[70%]" />}
+            </span>
             <p className="absolute left-[79.39px] top-[-0.41px] whitespace-nowrap text-[10px] font-normal leading-normal text-muted">
               {item.name}
             </p>

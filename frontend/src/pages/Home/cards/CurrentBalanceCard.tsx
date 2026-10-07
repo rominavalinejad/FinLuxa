@@ -27,7 +27,10 @@ export default function CurrentBalanceCard({ data }: { data: BalanceSummary }) {
       </span>
 
       {/* Header */}
-      <img src={balanceWalletIcon} alt="" className="absolute left-[36.81px] top-[19.08px] size-[34.132px]" />
+      {/* The exported wallet is only the white glyph: the green rounded square is drawn here */}
+      <span className="absolute left-[36.81px] top-[19.08px] flex size-[34.132px] items-center justify-center rounded-[4.36px] bg-brand">
+        <img src={balanceWalletIcon} alt="" className="max-h-[70%] max-w-[70%]" />
+      </span>
       <h2 className="absolute left-[84.77px] top-[29.23px] whitespace-nowrap text-[15px] font-semibold leading-normal">
         Current Balance
       </h2>
@@ -46,9 +49,9 @@ export default function CurrentBalanceCard({ data }: { data: BalanceSummary }) {
       <p className="absolute left-[36.71px] top-[73.08px] whitespace-nowrap text-[25px] font-black leading-normal">
         {formatAmount(data.currentBalance)}
       </p>
-      {/* PENDING: Notion's exact wording of this comparison label */}
+      {/* Change is measured against the Starting Balance (start of the selected month) */}
       <p className="absolute left-[207px] top-[82px] whitespace-nowrap text-[10px] font-normal leading-normal text-muted">
-        (vs. Month {formatPeriod(period)})
+        (vs. start of {formatPeriod(period)})
       </p>
       <span
         aria-hidden="true"
