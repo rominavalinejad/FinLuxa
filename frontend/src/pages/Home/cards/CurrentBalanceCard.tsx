@@ -31,7 +31,7 @@ export default function CurrentBalanceCard({ data }: { data: BalanceSummary }) {
       <span className="absolute left-[36.81px] top-[19.08px] flex size-[34.132px] items-center justify-center rounded-[4.36px] bg-brand">
         <img src={balanceWalletIcon} alt="" className="max-h-[70%] max-w-[70%]" />
       </span>
-      <h2 className="absolute left-[84.77px] top-[29.23px] whitespace-nowrap text-[15px] font-semibold leading-normal">
+      <h2 className="absolute left-[84.77px] top-[29.23px] whitespace-nowrap text-[15px] font-semibold leading-[normal]">
         Current Balance
       </h2>
       {/* Destination / popup not specified yet: visual only */}
@@ -46,11 +46,11 @@ export default function CurrentBalanceCard({ data }: { data: BalanceSummary }) {
       </button>
 
       {/* Amount + change */}
-      <p className="absolute left-[36.71px] top-[73.08px] whitespace-nowrap text-[25px] font-black leading-normal">
+      <p className="absolute left-[36.71px] top-[73.08px] whitespace-nowrap text-[25px] font-black leading-[normal]">
         {formatAmount(data.currentBalance)}
       </p>
       {/* Change is measured against the Starting Balance (start of the selected month) */}
-      <p className="absolute left-[207px] top-[82px] whitespace-nowrap text-[10px] font-normal leading-normal text-muted">
+      <p className="absolute left-[207px] top-[82px] whitespace-nowrap text-[10px] font-normal leading-[normal] text-muted">
         (vs. start of {formatPeriod(period)})
       </p>
       <span
@@ -60,7 +60,7 @@ export default function CurrentBalanceCard({ data }: { data: BalanceSummary }) {
         <MaskIcon src={balanceTrendUpIcon} width={12.43} height={14.03} />
       </span>
       <p
-        className={`absolute left-[52.79px] top-[115.08px] whitespace-nowrap text-[15px] font-bold leading-normal ${changeColor}`}
+        className={`absolute left-[52.79px] top-[115.08px] whitespace-nowrap text-[15px] font-bold leading-[normal] ${changeColor}`}
       >
         {positive ? "+" : "-"}
         {formatAmount(Math.abs(data.netFlow))}
@@ -95,10 +95,10 @@ export default function CurrentBalanceCard({ data }: { data: BalanceSummary }) {
         alt=""
         className="absolute left-[42.757px] top-[233.264px] h-[8.878px] w-[10.575px]"
       />
-      <p className="absolute left-[69px] top-[232px] whitespace-nowrap text-[10px] font-normal leading-normal">
+      <p className="absolute left-[69px] top-[232px] whitespace-nowrap text-[10px] font-normal leading-[normal]">
         Starting Balance:
       </p>
-      <p className="absolute left-[156px] top-[232px] whitespace-nowrap text-[10px] font-semibold leading-normal">
+      <p className="absolute left-[156px] top-[232px] whitespace-nowrap text-[10px] font-semibold leading-[normal]">
         {formatAmount(data.startingBalance)}
       </p>
     </section>

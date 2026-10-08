@@ -55,3 +55,23 @@ export const budgetFoodIcon = asset("./cards/budget/food.svg");
 export const budgetHousingIcon = asset("./cards/budget/housing.svg");
 export const budgetTransportIcon = asset("./cards/budget/transport.svg");
 export const budgetEntertainmentIcon = asset("./cards/budget/entertainment.svg");
+
+// Spending by Category card
+export const spendingCardBg = asset("./cards/spending/card.svg");
+export const spendingIconBg = asset("./cards/spending/icon-bg.svg");
+export const spendingIcon = asset("./cards/spending/icon.svg");
+
+// Saving Goal card
+export const savingCardBg = asset("./cards/saving-goal/card.svg");
+export const savingIconBg = asset("./cards/saving-goal/icon-bg.svg");
+export const savingIcon = asset("./cards/saving-goal/icon.svg");
+export const savingMore = asset("./cards/saving-goal/more.svg");
+export const savingStatusCard = asset("./cards/saving-goal/status-card.svg");
+export const savingLightIcon = asset("./cards/saving-goal/light-icon.svg");
+
+// AI Insight card
+export const aiCardBg = asset("./cards/ai-insight/card.svg");
+export const aiIcon = asset("./cards/ai-insight/icon.svg");
+export const aiIllustration = asset("./cards/ai-insight/illustration.svg");
+export const aiButtonBg = asset("./cards/ai-insight/button-bg.svg");
+export const aiArrowRight = asset("./cards/ai-insight/arrow-right.svg");

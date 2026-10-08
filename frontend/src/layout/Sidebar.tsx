@@ -10,8 +10,8 @@ export default function Sidebar() {
       {/* Brand block: logo + name + tagline (navigation starts 151px from the top) */}
       <div className="relative h-[151px]">
         <img src={logo} alt="" className="absolute left-[32px] top-[44px] h-[57px] w-[49px]" />
-        <div className="absolute left-[87.9px] top-[53px] text-[25px] font-semibold leading-normal">FinLuxa</div>
-        <div className="absolute left-[87.9px] top-[89px] text-[10px] font-light leading-normal">
+        <div className="absolute left-[87.9px] top-[53px] text-[25px] font-semibold leading-[normal]">FinLuxa</div>
+        <div className="absolute left-[87.9px] top-[89px] text-[10px] font-light leading-[normal]">
           Smarter Money, Simpler Life
         </div>
       </div>
@@ -24,7 +24,7 @@ export default function Sidebar() {
             to={item.path}
             end={item.path === "/"}
             className={({ isActive }) =>
-              `flex h-[39px] w-[238px] items-center rounded-[7.26px] pl-[26px] text-[15px] font-semibold leading-normal ${
+              `flex h-[39px] w-[238px] items-center rounded-[7.26px] pl-[26px] text-[15px] font-semibold leading-[normal] ${
                 isActive ? "bg-nav-active text-brand" : "text-white"
               }`
             }

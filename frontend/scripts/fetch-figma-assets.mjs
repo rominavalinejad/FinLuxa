@@ -57,6 +57,26 @@ const SVG_ASSETS = [
   { id: "70:70", file: "cards/budget/housing.svg" },
   { id: "70:73", file: "cards/budget/transport.svg" },
   { id: "70:76", file: "cards/budget/entertainment.svg" },
+
+  // Spending by Category card
+  { id: "62:31", file: "cards/spending/card.svg" },
+  { id: "61:21", file: "cards/spending/icon-bg.svg" },
+  { id: "69:35", file: "cards/spending/icon.svg" },
+
+  // Saving Goal card
+  { id: "54:541", file: "cards/saving-goal/card.svg" },
+  { id: "54:549", file: "cards/saving-goal/icon-bg.svg" },
+  { id: "70:50", file: "cards/saving-goal/icon.svg" },
+  { id: "70:49", file: "cards/saving-goal/more.svg" },
+  { id: "54:607", file: "cards/saving-goal/status-card.svg" },
+  { id: "70:52", file: "cards/saving-goal/light-icon.svg" },
+
+  // AI Insight card
+  { id: "54:537", file: "cards/ai-insight/card.svg" },
+  { id: "70:79", file: "cards/ai-insight/icon.svg" },
+  { id: "70:82", file: "cards/ai-insight/illustration.svg" },
+  { id: "102:6", file: "cards/ai-insight/button-bg.svg" },
+  { id: "55:149", file: "cards/ai-insight/arrow-right.svg" },
 ];
 
 const token = process.env.FIGMA_TOKEN;
@@ -70,6 +90,18 @@ const assetsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 async function figmaApi(pathAndQuery) {
   const response = await fetch(`https://api.figma.com${pathAndQuery}`, { headers: { "X-Figma-Token": token } });
   const body = await response.json().catch(() => ({}));
+  if (response.status === 429) {
+    // Figma's REST API has plan-based quotas (very low on the Starter plan). Every failed run counts, so do not retry early.
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0
+      ? `Retry after about ${(retryAfter / 3600).toFixed(1)} hours (${(retryAfter / 86400).toFixed(1)} days).`
+      : "Figma did not say when the limit resets.";
+    const details = ["x-figma-plan-tier", "x-figma-rate-limit-type", "x-figma-upgrade-link"]
+      .map((name) => (response.headers.get(name) ? `  ${name}: ${response.headers.get(name)}` : null))
+      .filter(Boolean)
+      .join("\n");
+    throw new Error(`Figma API rate limit exceeded (429). ${wait}\nDo not re-run before that.${details ? `\n${details}` : ""}`);
+  }
   if (!response.ok || body.err) {
     throw new Error(`Figma API ${response.status}: ${body.err ?? body.message ?? response.statusText}`);
   }

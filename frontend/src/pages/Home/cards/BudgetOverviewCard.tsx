@@ -29,12 +29,12 @@ export default function BudgetOverviewCard({ data }: { data: BudgetItem[] }) {
         alt=""
         className="absolute left-[20.526px] top-[19.448px] h-[17.733px] w-[19.587px]"
       />
-      <h2 className="absolute left-[55.85px] top-[21px] whitespace-nowrap text-[15px] font-semibold leading-normal">
+      <h2 className="absolute left-[55.85px] top-[21px] whitespace-nowrap text-[15px] font-semibold leading-[normal]">
         Budget Overview
       </h2>
       <Link
         to="/budget"
-        className="absolute left-[205.36px] top-[24px] whitespace-nowrap text-[10px] font-normal leading-normal text-link"
+        className="absolute left-[205.36px] top-[24px] whitespace-nowrap text-[10px] font-normal leading-[normal] text-link"
       >
         View all
       </Link>
@@ -56,16 +56,16 @@ export default function BudgetOverviewCard({ data }: { data: BudgetItem[] }) {
             >
               {style.icon && <img src={style.icon} alt="" className="max-h-[70%] max-w-[70%]" />}
             </span>
-            <p className="absolute left-[79.39px] top-[-0.41px] whitespace-nowrap text-[10px] font-normal leading-normal text-muted">
+            <p className="absolute left-[79.39px] top-[-0.41px] whitespace-nowrap text-[10px] font-normal leading-[normal] text-muted">
               {item.name}
             </p>
-            <p className="absolute left-[79.39px] top-[17.45px] whitespace-nowrap text-[10px] font-semibold leading-normal">
+            <p className="absolute left-[79.39px] top-[17.45px] whitespace-nowrap text-[10px] font-semibold leading-[normal]">
               {formatAmount(item.spent)}
             </p>
-            <p className="absolute left-[140.15px] top-[21.5px] whitespace-nowrap text-[5px] font-normal leading-normal text-muted">
+            <p className="absolute left-[140.15px] top-[21.5px] whitespace-nowrap text-[5px] font-normal leading-[normal] text-muted">
               /{formatAmount(item.budget)}
             </p>
-            <p className="absolute right-[17.9px] top-[16.4px] whitespace-nowrap text-right text-[10px] font-semibold leading-normal">
+            <p className="absolute right-[17.9px] top-[16.4px] whitespace-nowrap text-right text-[10px] font-semibold leading-[normal]">
               {percentLabel(item.percentUsed)}
             </p>
             <div className="absolute left-[79.39px] top-[33.64px] h-[14.046px] w-[158.414px] rounded-[10.859px] bg-muted/20">

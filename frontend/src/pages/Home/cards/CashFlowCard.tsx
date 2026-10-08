@@ -30,10 +30,10 @@ export default function CashFlowCard({ data }: { data: CashFlowSummary }) {
         alt=""
         className="absolute left-[24.416px] top-[23.126px] h-[18.62px] w-[20.608px]"
       />
-      <h2 className="absolute left-[60.54px] top-[25.37px] whitespace-nowrap text-[15px] font-semibold leading-normal">
+      <h2 className="absolute left-[60.54px] top-[25.37px] whitespace-nowrap text-[15px] font-semibold leading-[normal]">
         Cash Flow
       </h2>
-      <p className="absolute left-[146.76px] top-[29px] whitespace-nowrap text-[10px] font-normal leading-normal text-muted">
+      <p className="absolute left-[146.76px] top-[29px] whitespace-nowrap text-[10px] font-normal leading-[normal] text-muted">
         ({formatPeriod(period)})
       </p>
 
@@ -44,10 +44,10 @@ export default function CashFlowCard({ data }: { data: CashFlowSummary }) {
         alt=""
         className="absolute left-[27.592px] top-[79.983px] h-[16.633px] w-[14.224px]"
       />
-      <p className="absolute left-[60.55px] top-[81.59px] whitespace-nowrap text-[10px] font-semibold leading-normal">
+      <p className="absolute left-[60.55px] top-[81.59px] whitespace-nowrap text-[10px] font-semibold leading-[normal]">
         Income
       </p>
-      <p className="absolute right-[17.58px] top-[80.03px] whitespace-nowrap text-right text-[15px] font-semibold leading-normal text-brand">
+      <p className="absolute right-[17.58px] top-[80.03px] whitespace-nowrap text-right text-[15px] font-semibold leading-[normal] text-brand">
         {formatAmount(data.income)}
       </p>
 
@@ -58,10 +58,10 @@ export default function CashFlowCard({ data }: { data: CashFlowSummary }) {
         alt=""
         className="absolute left-[26.92px] top-[120.135px] h-[15.581px] w-[15.564px]"
       />
-      <p className="absolute left-[60.55px] top-[121.61px] whitespace-nowrap text-[10px] font-semibold leading-normal">
+      <p className="absolute left-[60.55px] top-[121.61px] whitespace-nowrap text-[10px] font-semibold leading-[normal]">
         Expense
       </p>
-      <p className="absolute right-[17.58px] top-[120.05px] whitespace-nowrap text-right text-[15px] font-semibold leading-normal text-expense">
+      <p className="absolute right-[17.58px] top-[120.05px] whitespace-nowrap text-right text-[15px] font-semibold leading-[normal] text-expense">
         {formatAmount(data.expense)}
       </p>
 
@@ -75,10 +75,10 @@ export default function CashFlowCard({ data }: { data: CashFlowSummary }) {
         alt=""
         className="absolute left-[27.234px] top-[189.669px] h-[15.292px] w-[15.371px]"
       />
-      <p className="absolute left-[60.55px] top-[190.25px] whitespace-nowrap text-[10px] font-black leading-normal">
+      <p className="absolute left-[60.55px] top-[190.25px] whitespace-nowrap text-[10px] font-black leading-[normal]">
         Net Flow
       </p>
-      <p className="absolute right-[17.58px] top-[188.69px] whitespace-nowrap text-right text-[15px] font-semibold leading-normal text-netflow">
+      <p className="absolute right-[17.58px] top-[188.69px] whitespace-nowrap text-right text-[15px] font-semibold leading-[normal] text-netflow">
         {formatAmount(data.netFlow)}
       </p>
     </section>
