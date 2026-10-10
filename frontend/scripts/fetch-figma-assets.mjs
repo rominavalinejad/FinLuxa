@@ -77,6 +77,16 @@ const SVG_ASSETS = [
   { id: "70:82", file: "cards/ai-insight/illustration.svg" },
   { id: "102:6", file: "cards/ai-insight/button-bg.svg" },
   { id: "55:149", file: "cards/ai-insight/arrow-right.svg" },
+
+  // Monthly Overview card
+  { id: "62:146", file: "cards/monthly-overview/card.svg" },
+  { id: "69:20", file: "cards/monthly-overview/icon.svg" },
+
+  // Small steps card
+  { id: "58:180", file: "cards/small-steps/card.svg" },
+  { id: "59:6895", file: "cards/small-steps/illustration.svg" },
+  { id: "60:7347", file: "cards/small-steps/button-bg.svg" },
+  { id: "60:7348", file: "cards/small-steps/arrow-right.svg" },
 ];
 
 const token = process.env.FIGMA_TOKEN;

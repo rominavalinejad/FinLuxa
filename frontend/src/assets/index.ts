@@ -75,3 +75,13 @@ export const aiIcon = asset("./cards/ai-insight/icon.svg");
 export const aiIllustration = asset("./cards/ai-insight/illustration.svg");
 export const aiButtonBg = asset("./cards/ai-insight/button-bg.svg");
 export const aiArrowRight = asset("./cards/ai-insight/arrow-right.svg");
+
+// Monthly Overview card
+export const monthlyCardBg = asset("./cards/monthly-overview/card.svg");
+export const monthlyIcon = asset("./cards/monthly-overview/icon.svg");
+
+// Small steps card
+export const smallStepsCardBg = asset("./cards/small-steps/card.svg");
+export const smallStepsIllustration = asset("./cards/small-steps/illustration.svg");
+export const smallStepsButtonBg = asset("./cards/small-steps/button-bg.svg");
+export const smallStepsArrowRight = asset("./cards/small-steps/arrow-right.svg");

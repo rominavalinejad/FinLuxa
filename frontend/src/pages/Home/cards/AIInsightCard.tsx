@@ -26,7 +26,8 @@ export default function AIInsightCard() {
         <p className="text-justify text-[10px] font-normal leading-[normal]">{DEMO_INSIGHT}</p>
       </div>
 
-      {/* Illustration: the exported frame already contains the round background (45.04 x 45.04) */}
+      {/* Illustration: the exported file is only the robot, so the round background (45.04 x 45.04) is drawn here */}
+      <span className="absolute left-[194.882px] top-[99.734px] block size-[45.043px] rounded-full bg-netflow/20" />
       <AssetBox src={aiIllustration} left={194.882} top={99.734} width={45.043} height={45.043} />
 
       {/* "See Details" button: 55 x 17. The arrow sits right after the label (x = 39), not at the edge */}
