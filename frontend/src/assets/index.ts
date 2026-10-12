@@ -28,6 +28,10 @@ export const dateIcon = asset("./icons/date.svg");
 export const chevronDownIcon = asset("./icons/chevron-down.svg");
 export const profileMenu = asset("./icons/profile-menu.svg");
 export const notificationButton = asset("./icons/notification-button.svg");
+export const budgetAlertsIcon = asset("./icons/budget-alerts.svg");
+
+// Sidebar decoration (hand-drawn placeholder, NOT exported from Figma yet — see sidebar/leaf.svg)
+export const sidebarLeaf = asset("./sidebar/leaf.svg");
 
 // Current Balance card
 export const balanceCardBg = asset("./cards/current-balance/card.svg");
