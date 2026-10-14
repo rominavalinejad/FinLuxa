@@ -3,6 +3,7 @@ import { chevronDownIcon, dateIcon, heartIcon, notificationButton } from "../ass
 import { usePeriod } from "../context/PeriodContext";
 import { formatPeriod, greetingPeriod } from "../lib/date";
 import { getHeaderContent } from "./pageHeaders";
+import ProfileMenu from "./ProfileMenu";
 
 // TODO: replace with the signed-in user's name once authentication exists (Figma demo name).
 const PLACEHOLDER_NAME = "Romina";
@@ -17,7 +18,6 @@ export default function Header() {
   const { period } = usePeriod();
   const { pathname } = useLocation();
   const greeting = greetingPeriod() === "morning" ? "Good Morning" : "Good Evening";
-  const initial = PLACEHOLDER_NAME.charAt(0).toUpperCase();
   const content = getHeaderContent(pathname, { greeting, userName: PLACEHOLDER_NAME, period });
 
   return (
@@ -57,24 +57,8 @@ export default function Header() {
           </span>
         </button>
 
-        {/* Profile Menu: 136 x 43 — avatar with the user's initial + name + chevron (built in code so the name is dynamic) */}
-        <button
-          type="button"
-          aria-label="Profile"
-          className="relative h-[43px] w-[136px] rounded-full bg-white shadow-[2.96px_1.95px_6.922px_-2.786px_rgba(0,0,0,0.15)]"
-        >
-          <span className="absolute left-[12px] top-[8px] flex size-[26px] items-center justify-center rounded-full bg-netflow text-[12.773px] font-semibold leading-none text-white">
-            {initial}
-          </span>
-          <span className="absolute left-[48px] top-[13px] max-w-[54px] truncate text-left text-[12.773px] font-semibold leading-[normal]">
-            {PLACEHOLDER_NAME}
-          </span>
-          <span className="absolute left-[106.63px] top-[18.6px] block h-[6.723px] w-[13.108px]">
-            <span className="absolute inset-[-15.49%_-7.95%_-22.2%_-7.95%]">
-              <img src={chevronDownIcon} alt="" className="block size-full max-w-none" />
-            </span>
-          </span>
-        </button>
+        {/* Profile Menu: 136 x 43 + popup (see ProfileMenu.tsx) */}
+        <ProfileMenu name={PLACEHOLDER_NAME} />
       </div>
     </header>
   );

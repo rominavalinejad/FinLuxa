@@ -17,6 +17,30 @@
   --color-netflow: #9672f9;         /* Net Flow amount */
   --color-link: #2f37cd;            /* "View all" */
   --color-nav-active: rgb(27 183 123 / 0.2); /* Active nav item background */
+
+  /* Profile popup (opens downwards, the page blur fades in with it) */
+  --animate-popup-in: popup-in 160ms ease-out;
+  --animate-fade-in: fade-in 160ms ease-out;
+
+  @keyframes popup-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scaleY(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
 html,
