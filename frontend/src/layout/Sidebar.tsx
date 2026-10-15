@@ -19,7 +19,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Items are 39px tall boxes, 60px apart; the active one gets the green pill (238px wide) */}
+      {/* Items are 39px tall boxes, 60px apart. The green pill (238px wide) follows the mouse (hover / focus);
+          icon + title turn green only for the clicked (active) page. */}
       <nav className="flex flex-col gap-[21px] pl-[17px]">
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -27,7 +28,7 @@ export default function Sidebar() {
             to={item.path}
             end={item.path === "/"}
             className={({ isActive }) =>
-              `flex h-[39px] w-[238px] items-center rounded-[7.26px] pl-[26px] text-[15px] font-semibold leading-[normal] ${
+              `flex h-[39px] w-[238px] items-center rounded-[7.26px] pl-[26px] text-[15px] font-semibold leading-[normal] outline-none transition-colors hover:bg-nav-active focus-visible:bg-nav-active ${
                 isActive ? "bg-nav-active text-brand" : "text-white"
               }`
             }
