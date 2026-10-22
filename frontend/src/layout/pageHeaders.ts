@@ -8,6 +8,8 @@ export interface HeaderContent {
   showHeart: boolean;
   /** The month/year selector that drives PeriodContext (Home only). */
   showDateSelector: boolean;
+  /** The "Compare to Last Month" button (Transactions only; demo for now). */
+  showCompare: boolean;
 }
 
 interface HeaderContext {
@@ -27,6 +29,16 @@ export function getHeaderContent(pathname: string, ctx: HeaderContext): HeaderCo
       subtitle: "Manage your account and preferences.",
       showHeart: false,
       showDateSelector: false,
+      showCompare: false,
+    };
+  }
+  if (pathname === "/transactions") {
+    return {
+      title: "Transactions",
+      subtitle: "All your income and expenses in one place.",
+      showHeart: false,
+      showDateSelector: false,
+      showCompare: true,
     };
   }
   return {
@@ -34,5 +46,6 @@ export function getHeaderContent(pathname: string, ctx: HeaderContext): HeaderCo
     subtitle: `Here’s your financial overview for ${monthName(ctx.period)} ${ctx.period.year}.`,
     showHeart: true,
     showDateSelector: true,
+    showCompare: false,
   };
 }

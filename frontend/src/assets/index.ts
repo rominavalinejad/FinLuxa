@@ -89,3 +89,8 @@ export const smallStepsCardBg = asset("./cards/small-steps/card.svg");
 export const smallStepsIllustration = asset("./cards/small-steps/illustration.svg");
 export const smallStepsButtonBg = asset("./cards/small-steps/button-bg.svg");
 export const smallStepsArrowRight = asset("./cards/small-steps/arrow-right.svg");
+
+// Category icons (Transactions table, Budget Overview) — added manually, not in assets:figma yet
+export const categorySalaryIcon = asset("./categories/salary.svg");
+export const categoryFreelanceIcon = asset("./categories/freelance.svg");
+export const categoryHealthIcon = asset("./categories/health.svg");
