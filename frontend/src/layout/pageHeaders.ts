@@ -41,6 +41,15 @@ export function getHeaderContent(pathname: string, ctx: HeaderContext): HeaderCo
       showCompare: true,
     };
   }
+  if (pathname === "/ai-insights") {
+    return {
+      title: "AI Insights",
+      subtitle: "Smart suggestions, spending patterns and projections based on your own transactions.",
+      showHeart: false,
+      showDateSelector: false,
+      showCompare: false,
+    };
+  }
   return {
     title: `${ctx.greeting} ${ctx.userName}`,
     subtitle: `Here’s your financial overview for ${monthName(ctx.period)} ${ctx.period.year}.`,

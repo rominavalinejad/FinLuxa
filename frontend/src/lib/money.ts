@@ -12,3 +12,8 @@ export function formatSignedAmount(amount: number, type: TransactionType, symbol
   const sign = type === "income" ? "+" : "-";
   return `${sign} ${formatAmount(amount)} ${symbol}`;
 }
+
+/** "5,000,000 ﷼": plain amount with the currency after the number. */
+export function formatMoney(amount: number, symbol: string): string {
+  return `${formatAmount(amount)} ${symbol}`;
+}
