@@ -50,6 +50,16 @@ export function getHeaderContent(pathname: string, ctx: HeaderContext): HeaderCo
       showCompare: false,
     };
   }
+  if (pathname === "/help") {
+    // From the Figma Help frame.
+    return {
+      title: "Help",
+      subtitle: "Find answers to common questions and learn how to make the most of FinLuxa.",
+      showHeart: false,
+      showDateSelector: false,
+      showCompare: false,
+    };
+  }
   return {
     title: `${ctx.greeting} ${ctx.userName}`,
     subtitle: `Here’s your financial overview for ${monthName(ctx.period)} ${ctx.period.year}.`,
